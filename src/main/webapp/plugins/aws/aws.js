@@ -3,6 +3,164 @@
  */
 Draw.loadPlugin(function(ui)
 {
+	const ENUM_RESOURCE_TYPES = {
+		LAMBDA: 'lambda',
+		DYNAMO: 'dynamo',
+		API: 'api',
+		S3: 's3',
+		SQS: 'sqs',
+	}
+	
+	const ENUM_FIELD_TYPES = {
+		STRING: 'string',
+		NUMBER: 'number',
+		BOOLEAN: 'boolean',
+		RAW: 'raw',
+		RESOURCE: 'resource',
+	}
+
+	const LAMBDA_PROPERTIES = {
+		code: ENUM_FIELD_TYPES.RAW,
+		handler: ENUM_FIELD_TYPES.RAW,
+		runtime: ENUM_FIELD_TYPES.RAW,
+		adotInstrumentation: ENUM_FIELD_TYPES.RAW,
+		allowAllOutbound: ENUM_FIELD_TYPES.RAW,
+		allowPublicSubnet: ENUM_FIELD_TYPES.RAW,
+		architecture: ENUM_FIELD_TYPES.RAW,
+		codeSigningConfig: ENUM_FIELD_TYPES.RAW,
+		currentVersionOptions: ENUM_FIELD_TYPES.RAW,
+		deadLetterQueue: ENUM_FIELD_TYPES.RAW,
+		deadLetterQueueEnabled: ENUM_FIELD_TYPES.RAW,
+		deadLetterTopic: ENUM_FIELD_TYPES.RAW,
+		description: ENUM_FIELD_TYPES.RAW,
+		environment: ENUM_FIELD_TYPES.RAW,
+		environmentEncryption: ENUM_FIELD_TYPES.RAW,
+		ephemeralStorageSize: ENUM_FIELD_TYPES.RAW,
+		events: ENUM_FIELD_TYPES.RAW,
+		fileSystem: ENUM_FIELD_TYPES.RAW,
+		functionName: ENUM_FIELD_TYPES.RAW,
+		initialPolicy: ENUM_FIELD_TYPES.RAW,
+		insightsVersion: ENUM_FIELD_TYPES.RAW,
+		layers: ENUM_FIELD_TYPES.RAW,
+		logRetention: ENUM_FIELD_TYPES.RAW,
+		logRetentionRetryOptions: ENUM_FIELD_TYPES.RAW,
+		logRetentionRole: ENUM_FIELD_TYPES.RAW,
+		maxEventAge: ENUM_FIELD_TYPES.RAW,
+		memorySize: ENUM_FIELD_TYPES.RAW,
+		onFailure: ENUM_FIELD_TYPES.RAW,
+		onSuccess: ENUM_FIELD_TYPES.RAW,
+		profiling: ENUM_FIELD_TYPES.RAW,
+		profilingGroup: ENUM_FIELD_TYPES.RAW,
+		reservedConcurrentExecutions: ENUM_FIELD_TYPES.RAW,
+		retryAttempts: ENUM_FIELD_TYPES.RAW,
+		role: ENUM_FIELD_TYPES.RAW,
+		runtimeManagementMode: ENUM_FIELD_TYPES.RAW,
+		securityGroups: ENUM_FIELD_TYPES.RAW,
+		timeout: ENUM_FIELD_TYPES.RAW,
+		tracing: ENUM_FIELD_TYPES.RAW,
+		vpc: ENUM_FIELD_TYPES.RAW,
+		vpcSubnets: ENUM_FIELD_TYPES.RAW,
+	}
+
+	const DYNAMO_PROPERTIES = {
+		partitionKey: ENUM_FIELD_TYPES.RAW,
+		billingMode: ENUM_FIELD_TYPES.RAW,
+		contributorInsightsEnabled: ENUM_FIELD_TYPES.RAW,
+		deletionProtection: ENUM_FIELD_TYPES.RAW,
+		encryption: ENUM_FIELD_TYPES.RAW,
+		encryptionKey: ENUM_FIELD_TYPES.RAW,
+		kinesisStream: ENUM_FIELD_TYPES.RAW,
+		pointInTimeRecovery: ENUM_FIELD_TYPES.RAW,
+		readCapacity: ENUM_FIELD_TYPES.RAW,
+		removalPolicy: ENUM_FIELD_TYPES.RAW,
+		replicationRegions: ENUM_FIELD_TYPES.RAW,
+		replicationTimeout: ENUM_FIELD_TYPES.RAW,
+		serverSideEncryption: ENUM_FIELD_TYPES.RAW,
+		sortKey: ENUM_FIELD_TYPES.RAW,
+		stream: ENUM_FIELD_TYPES.RAW,
+		tableClass: ENUM_FIELD_TYPES.RAW,
+		tableName: ENUM_FIELD_TYPES.RAW,
+		timeToLiveAttribute: ENUM_FIELD_TYPES.RAW,
+		waitForReplicationToFinish: ENUM_FIELD_TYPES.RAW,
+		writeCapacity: ENUM_FIELD_TYPES.RAW,
+	}
+
+	const S3_PROPERTIES = {
+		accessControl: ENUM_FIELD_TYPES.RAW,
+		autoDeleteObjects: ENUM_FIELD_TYPES.RAW,
+		blockPublicAccess: ENUM_FIELD_TYPES.RAW,
+		bucketKeyEnabled: ENUM_FIELD_TYPES.RAW,
+		bucketName: ENUM_FIELD_TYPES.RAW,
+		cors: ENUM_FIELD_TYPES.RAW,
+		encryption: ENUM_FIELD_TYPES.RAW,
+		encryptionKey: ENUM_FIELD_TYPES.RAW,
+		enforceSSL: ENUM_FIELD_TYPES.RAW,
+		eventBridgeEnabled: ENUM_FIELD_TYPES.RAW,
+		intelligentTieringConfigurations: ENUM_FIELD_TYPES.RAW,
+		inventories: ENUM_FIELD_TYPES.RAW,
+		lifecycleRules: ENUM_FIELD_TYPES.RAW,
+		metrics: ENUM_FIELD_TYPES.RAW,
+		notificationsHandlerRole: ENUM_FIELD_TYPES.RAW,
+		objectLockDefaultRetention: ENUM_FIELD_TYPES.RAW,
+		objectLockEnabled: ENUM_FIELD_TYPES.RAW,
+		objectOwnership: ENUM_FIELD_TYPES.RAW,
+		publicReadAccess: ENUM_FIELD_TYPES.RAW,
+		removalPolicy: ENUM_FIELD_TYPES.RAW,
+		serverAccessLogsBucket: ENUM_FIELD_TYPES.RAW,
+		serverAccessLogsPrefix: ENUM_FIELD_TYPES.RAW,
+		transferAcceleration: ENUM_FIELD_TYPES.RAW,
+		versioned: ENUM_FIELD_TYPES.RAW,
+		websiteErrorDocument: ENUM_FIELD_TYPES.RAW,
+		websiteIndexDocument: ENUM_FIELD_TYPES.RAW,
+		websiteRedirect: ENUM_FIELD_TYPES.RAW,
+		websiteRoutingRules: ENUM_FIELD_TYPES.RAW,
+	}
+
+	const REST_API_PROPERTIES = {
+		apiKeySourceType: ENUM_FIELD_TYPES.RAW,
+		binaryMediaTypes: ENUM_FIELD_TYPES.RAW,
+		cloneForm: ENUM_FIELD_TYPES.RAW,
+		cloudWatchRole: ENUM_FIELD_TYPES.RAW,
+		defaultCorsPreflightOptions: ENUM_FIELD_TYPES.RAW,
+		defaultIntegration: ENUM_FIELD_TYPES.RAW,
+		defaultMethodOptions: ENUM_FIELD_TYPES.RAW,
+		deploy: ENUM_FIELD_TYPES.RAW,
+		deployOptions: ENUM_FIELD_TYPES.RAW,
+		description: ENUM_FIELD_TYPES.RAW,
+		disableExecuteApiEndpoint: ENUM_FIELD_TYPES.RAW,
+		domainName: ENUM_FIELD_TYPES.RAW,
+		endpointConfiguration: ENUM_FIELD_TYPES.RAW,
+		endpointExportName: ENUM_FIELD_TYPES.RAW,
+		endpointTypes: ENUM_FIELD_TYPES.RAW,
+		failOnWarnings: ENUM_FIELD_TYPES.RAW,
+		minCompressionSize: ENUM_FIELD_TYPES.RAW,
+		parameters: ENUM_FIELD_TYPES.RAW,
+		policy: ENUM_FIELD_TYPES.RAW,
+		restApiName: ENUM_FIELD_TYPES.RAW,
+		retainDeployments: ENUM_FIELD_TYPES.RAW,
+	}
+
+	const SQS_PROPERTIES = {
+		contentBasedDeduplication: ENUM_FIELD_TYPES.RAW,
+		dataKeyReuse: ENUM_FIELD_TYPES.RAW,
+		deadLetterQueue: ENUM_FIELD_TYPES.RAW,
+		deduplicationScope: ENUM_FIELD_TYPES.RAW,
+		deliveryDelay: ENUM_FIELD_TYPES.RAW,
+		encryption: ENUM_FIELD_TYPES.RAW,
+		encryptionMasterKey: ENUM_FIELD_TYPES.RAW,
+		enforceSSL: ENUM_FIELD_TYPES.RAW,
+		fifo: ENUM_FIELD_TYPES.RAW,
+		fifoThroughputLimit: ENUM_FIELD_TYPES.RAW,
+		maxMessageSizeBytes: ENUM_FIELD_TYPES.RAW,
+		queueName: ENUM_FIELD_TYPES.RAW,
+		receiveMessageWaitTime: ENUM_FIELD_TYPES.RAW,
+		removalPolicy: ENUM_FIELD_TYPES.RAW,
+		retentionPeriod: ENUM_FIELD_TYPES.RAW,
+		visibilityTimeout: ENUM_FIELD_TYPES.RAW,
+	}
+
+
+
 	var multiStringSplit = function(str, sep1, sep2) {	
 		var ret = {};
 		if (str == null) {
@@ -45,7 +203,15 @@ Draw.loadPlugin(function(ui)
 		console.log(styles)
 		switch (styles['resIcon']) {
 			case 'mxgraph.aws4.lambda':
-				return 'lambda';
+				return ENUM_RESOURCE_TYPES.LAMBDA;
+			case 'mxgraph.aws4.dynamodb':
+				return ENUM_RESOURCE_TYPES.DYNAMO;
+			case 'mxgraph.aws4.s3':
+				return ENUM_RESOURCE_TYPES.S3;
+			case 'mxgraph.aws4.sqs':
+				return ENUM_RESOURCE_TYPES.SQS;
+			case 'mxgraph.aws4.api_gateway':
+				return ENUM_RESOURCE_TYPES.API;
 			default:
 				return null;
 		}
@@ -202,24 +368,20 @@ Draw.loadPlugin(function(ui)
 
 		let data = null;
 		switch (type) {
-			case 'lambda':
-				data = {
-					"runtime": "raw",
-					"code": "raw",
-					"handler": "string",
-					"vpc": "resource",
-				
-					"description": "string",
-					"profiling": "boolean",
-					"deadLetterQueue": "resource",
-					"deadLetterQueueEnabled": "boolean",
-					"allowAllOutbound": "boolean",
-					"securityGroups": "resource[]",
-					"memorySize": "number",
-					"functionName": "string",
-					"timeout": "raw",
-					"environment": "raw"
-				};//require('./lambdaProps.json');
+			case ENUM_RESOURCE_TYPES.LAMBDA:
+				data = LAMBDA_PROPERTIES;
+				break;
+			case ENUM_RESOURCE_TYPES.DYNAMO:
+				data = DYNAMO_PROPERTIES;
+				break;
+			case ENUM_RESOURCE_TYPES.S3:
+				data = S3_PROPERTIES;
+				break;
+			case ENUM_RESOURCE_TYPES.API:
+				data = REST_API_PROPERTIES;
+				break;
+			case ENUM_RESOURCE_TYPES.SQS:
+				data = SQS_PROPERTIES;
 				break;
 			default:
 				throw new Error('Unknown resource type ' + type);
