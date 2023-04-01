@@ -7,78 +7,123 @@ Draw.loadPlugin(function(ui)
 		STRING: 'string',
 		NUMBER: 'number',
 		BOOLEAN: 'boolean',
-		RAW: 'raw',
-		RESOURCE: 'resource', 
-		COMPLEX: 'complex', // arrays, dictionaries, etc.
+		ENUM: 'enum',
+		RAW: 'raw', // Straight up raw typescript
+		RESOURCE: 'resource', // Resource in diagram
 		ARN: 'arn', // Already deployed resource
-		ID: 'id', // Resource in diagram
+		CUSTOM: 'custom', // arrays, dictionaries, etc. 
 	}
 
 	const defineSchema = (types, defaultVal, required, validationCallback) => {
-		if (validationCallback) {
-
+		if (defaultVal == undefined) {
+			defaultVal = null
+		}
+		if (required == undefined || required == null) {
+			required = false
+		}
+		if (types == undefined || types == null) {
+			types = [ENUM_FIELD_TYPES.RAW]
+		}
+		if (!Array.isArray(types)) {
+			types = [types]
+		}
+		if (validationCallback == undefined || validationCallback == null) {
+			validationCallback = (value) => { return }
 		}
 
-		return
+		return	{
+			default: defaultVal,
+			required: required,
+			validFormats: types,
+			validationCallback: validationCallback
+		}
 	}
 
-	const TypeString = () => {
+	const TypeString = (defaultVal = null) => {
 		const validation = (value) => {
 			if (typeof value !== 'string') {
 				throw new Error('Value must be a string')
 			}
 		}
 
-		return defineSchema(ENUM_FIELD_TYPES.STRING, null, false, validation)
+		return defineSchema(ENUM_FIELD_TYPES.STRING, defaultVal, false, validation)
 	}
 
+	const TypeEnum = (customDefinition = null) => {
+		const validation = (value) => {
+			for (const val in customDefinition) {
+				if (value === customDefinition[val]) {
+					return
+				}
+			}
+			throw new Error('Not a valid enum value: ' + value)
+		}
+			
+		return defineSchema(ENUM_FIELD_TYPES.ENUM, null, false, validation)
+	}
+
+	const TypeRaw = (defaultVal = null) => {
+		return defineSchema(ENUM_FIELD_TYPES.RAW, defaultVal, false, null)
+	}
+
+	const ENUM_LAMBDA_RUNTIMES = {
+		".Net 6": "cdk.aws_lambda.Runtime.DOTNET_6",
+		"Go v1": "cdk.aws_lambda.Runtime.GO_1_X",
+		"Java 11": "cdk.aws_lambda.Runtime.JAVA_11",
+		"Java 8": "cdk.aws_lambda.Runtime.JAVA_8",
+		"Java 8 Corretto": "cdk.aws_lambda.Runtime.JAVA_8_CORRETTO",
+		"Node.js 14": "cdk.aws_lambda.Runtime.NODEJS_14_X",
+		"Node.js 16": "cdk.aws_lambda.Runtime.NODEJS_16_X",
+		"Node.js 18": "cdk.aws_lambda.Runtime.NODEJS_18_X",
+	}
+
+
 	const LAMBDA_PROPERTIES = {
-		code: {
-			default: null,
-			required: true,
-			validFormats: [
-				ENUM_FIELD_TYPES.RAW
-			],
-		},
-		handler: ENUM_FIELD_TYPES.RAW,
-		runtime: ENUM_FIELD_TYPES.RAW,
-		adotInstrumentation: ENUM_FIELD_TYPES.RAW,
-		allowAllOutbound: ENUM_FIELD_TYPES.RAW,
-		allowPublicSubnet: ENUM_FIELD_TYPES.RAW,
-		architecture: ENUM_FIELD_TYPES.RAW,
-		codeSigningConfig: ENUM_FIELD_TYPES.RAW,
-		currentVersionOptions: ENUM_FIELD_TYPES.RAW,
-		deadLetterQueue: ENUM_FIELD_TYPES.RAW,
-		deadLetterQueueEnabled: ENUM_FIELD_TYPES.RAW,
-		deadLetterTopic: ENUM_FIELD_TYPES.RAW,
-		description: ENUM_FIELD_TYPES.RAW,
-		environment: ENUM_FIELD_TYPES.RAW,
-		environmentEncryption: ENUM_FIELD_TYPES.RAW,
-		ephemeralStorageSize: ENUM_FIELD_TYPES.RAW,
-		events: ENUM_FIELD_TYPES.RAW,
-		fileSystem: ENUM_FIELD_TYPES.RAW,
-		functionName: ENUM_FIELD_TYPES.RAW,
-		initialPolicy: ENUM_FIELD_TYPES.RAW,
-		insightsVersion: ENUM_FIELD_TYPES.RAW,
-		layers: ENUM_FIELD_TYPES.RAW,
-		logRetention: ENUM_FIELD_TYPES.RAW,
-		logRetentionRetryOptions: ENUM_FIELD_TYPES.RAW,
-		logRetentionRole: ENUM_FIELD_TYPES.RAW,
-		maxEventAge: ENUM_FIELD_TYPES.RAW,
-		memorySize: ENUM_FIELD_TYPES.RAW,
-		onFailure: ENUM_FIELD_TYPES.RAW,
-		onSuccess: ENUM_FIELD_TYPES.RAW,
-		profiling: ENUM_FIELD_TYPES.RAW,
-		profilingGroup: ENUM_FIELD_TYPES.RAW,
-		reservedConcurrentExecutions: ENUM_FIELD_TYPES.RAW,
-		retryAttempts: ENUM_FIELD_TYPES.RAW,
-		role: ENUM_FIELD_TYPES.RAW,
-		runtimeManagementMode: ENUM_FIELD_TYPES.RAW,
-		securityGroups: ENUM_FIELD_TYPES.RAW,
-		timeout: ENUM_FIELD_TYPES.RAW,
-		tracing: ENUM_FIELD_TYPES.RAW,
-		vpc: ENUM_FIELD_TYPES.RAW,
-		vpcSubnets: ENUM_FIELD_TYPES.RAW,
+		code: defineSchema(ENUM_FIELD_TYPES.RAW, 
+			`cdk.aws_lambda.Code.fromInline('exports.handler = async (event) => {\\n' +
+			'  console.log(JSON.stringify(event));\\n' +
+			'  return event;\\n' +
+			'};`, 
+			false),
+		handler: TypeString('index.handler'),
+		runtime: TypeEnum(ENUM_LAMBDA_RUNTIMES),
+		adotInstrumentation: TypeRaw(),
+		allowAllOutbound: TypeRaw(),
+		allowPublicSubnet: TypeRaw(),
+		architecture: TypeRaw(),
+		codeSigningConfig: TypeRaw(),
+		currentVersionOptions: TypeRaw(),
+		deadLetterQueue: TypeRaw(),
+		deadLetterQueueEnabled: TypeRaw(),
+		deadLetterTopic: TypeRaw(),
+		description: TypeRaw(),
+		environment: TypeRaw(),
+		environmentEncryption: TypeRaw(),
+		ephemeralStorageSize: TypeRaw(),
+		events: TypeRaw(),
+		fileSystem: TypeRaw(),
+		functionName: TypeRaw(),
+		initialPolicy: TypeRaw(),
+		insightsVersion: TypeRaw(),
+		layers: TypeRaw(),
+		logRetention: TypeRaw(),
+		logRetentionRetryOptions: TypeRaw(),
+		logRetentionRole: TypeRaw(),
+		maxEventAge: TypeRaw(),
+		memorySize: TypeRaw(),
+		onFailure: TypeRaw(),
+		onSuccess: TypeRaw(),
+		profiling: TypeRaw(),
+		profilingGroup: TypeRaw(),
+		reservedConcurrentExecutions: TypeRaw(),
+		retryAttempts: TypeRaw(),
+		role: TypeRaw(),
+		runtimeManagementMode: TypeRaw(),
+		securityGroups: TypeRaw(),
+		timeout: TypeRaw(),
+		tracing: TypeRaw(),
+		vpc: TypeRaw(),
+		vpcSubnets: TypeRaw(),
 	}
 
 	const DYNAMODB_PROPERTIES = {
@@ -301,11 +346,9 @@ Draw.loadPlugin(function(ui)
 		}
 		
 		var meta = {};
-		
 		try
 		{
 			var temp = mxUtils.getValue(ui.editor.graph.getCurrentCellStyle(cell), 'metaData', null);
-			
 			if (temp != null)
 			{
 				meta = JSON.parse(temp);
@@ -323,80 +366,24 @@ Draw.loadPlugin(function(ui)
 		var attrs = value.attributes;
 		var names = [];
 		var texts = [];
+		var schemas = [];
 		var count = 0;
 
 		var id = (EditAWSDataDialog.getDisplayIdForCell != null) ?
 			EditAWSDataDialog.getDisplayIdForCell(ui, cell) : null;
 		
-		var addRemoveButton = function(text, name)
+		var addTextArea = function(index, name, schema)
 		{
-			var wrapper = document.createElement('div');
-			wrapper.style.position = 'relative';
-			wrapper.style.paddingRight = '20px';
-			wrapper.style.boxSizing = 'border-box';
-			wrapper.style.width = '100%';
-			
-			var removeAttr = document.createElement('a');
-			var img = mxUtils.createImage(Dialog.prototype.closeImage);
-			img.style.height = '9px';
-			img.style.fontSize = '9px';
-			img.style.marginBottom = (mxClient.IS_IE11) ? '-1px' : '5px';
-			
-			removeAttr.className = 'geButton';
-			removeAttr.setAttribute('title', mxResources.get('delete'));
-			removeAttr.style.position = 'absolute';
-			removeAttr.style.top = '4px';
-			removeAttr.style.right = '0px';
-			removeAttr.style.margin = '0px';
-			removeAttr.style.width = '9px';
-			removeAttr.style.height = '9px';
-			removeAttr.style.cursor = 'pointer';
-			removeAttr.appendChild(img);
-			
-			var removeAttrFn = (function(name)
-			{
-				return function()
-				{
-					var count = 0;
-					
-					for (var j = 0; j < names.length; j++)
-					{
-						if (names[j] == name)
-						{
-							texts[j] = null;
-							form.table.deleteRow(count + ((id != null) ? 1 : 0));
-							
-							break;
-						}
-						
-						if (texts[j] != null)
-						{
-							count++;
-						}
-					}
-				};
-			})(name);
-			
-			mxEvent.addListener(removeAttr, 'click', removeAttrFn);
-			
-			var parent = text.parentNode;
-			wrapper.appendChild(text);
-			wrapper.appendChild(removeAttr);
-			parent.appendChild(wrapper);
-		};
-		
-		var addTextArea = function(index, name, value)
-		{
+			const value = schema?.default || '';
 			names[index] = name;
 			texts[index] = form.addTextarea(names[count] + ':', value, 2);
 			texts[index].style.width = '100%';
+			schemas[index] = schema;
 			
 			if (value.indexOf('\n') > 0)
 			{
 				texts[index].setAttribute('rows', '2');
 			}
-			
-			//addRemoveButton(texts[index], name);
 			
 			if (meta[name] != null && meta[name].editable == false)
 			{
@@ -411,24 +398,37 @@ Draw.loadPlugin(function(ui)
 
 		// Get props and fill with default values
 		const props = parseStringProps(attrs['constructorProps']?.nodeValue);
-		var temp = [];
+		var uiFieldsSchema = [];
+		console.log(props)
 		for (let key in data.constructorProps) {
 			if (!data.constructorProps.hasOwnProperty(key)) {
 			  continue;
 			}
+			
+			// TODO ASH Make a copy since this directly updates the schema
+			const schema = data.constructorProps[key];
 
-			let val = "";
+			// Check if there is a value for this property in the props
 			for (let propKey in props) {
-				if (propKey == key) {
-					val = props[propKey];
-					break;
+				if (propKey != key) {
+					continue;
 				}
+
+				if (schema.validationCallback != null) {
+					schema.validationCallback(props[propKey])
+					schema.default = props[propKey]
+				} else {
+					schema.default = props[propKey]
+				}
+				break;
 			}
-			temp.push({name: key, value: val});
+
+			console.log(schema)
+			uiFieldsSchema.push({name: key, value: schema});
 		}
 		
 		// Sorts by name
-		temp.sort(function(a, b)
+		uiFieldsSchema.sort(function(a, b)
 		{
 			if (a.name < b.name)
 			{
@@ -507,9 +507,9 @@ Draw.loadPlugin(function(ui)
 			});
 		}
 		
-		for (var i = 0; i < temp.length; i++)
+		for (var i = 0; i < uiFieldsSchema.length; i++)
 		{
-			addTextArea(count, temp[i].name, temp[i].value);
+			addTextArea(count, uiFieldsSchema[i].name, uiFieldsSchema[i].value);
 			count++;
 		}
 		
@@ -547,68 +547,6 @@ Draw.loadPlugin(function(ui)
 		top.appendChild(newProp);
 		div.appendChild(top);
 
-		var addProperty = function (property)
-		{
-			let name = property;
-
-			// Avoid ':' in attribute names which seems to be valid in Chrome
-			if (name.length > 0 && name != 'label' && name != 'placeholders' && name.indexOf(':') < 0)
-			{
-				try
-				{
-					var idx = mxUtils.indexOf(names, name);
-					
-					if (idx >= 0 && texts[idx] != null)
-					{
-						texts[idx].focus();
-					}
-					else
-					{
-						// Checks if the name is valid
-						var clone = value.cloneNode(false);
-						clone.setAttribute(name, '');
-						
-						if (idx >= 0)
-						{
-							names.splice(idx, 1);
-							texts.splice(idx, 1);
-						}
-
-						names.push(name);
-						var text = form.addTextarea(name + ':', '', 2);
-						text.style.width = '100%';
-						texts.push(text);
-						addRemoveButton(text, name);
-
-						text.focus();
-					}
-
-					//addBtn.setAttribute('disabled', 'disabled');
-					nameInput.value = '';
-				}
-				catch (e)
-				{
-					mxUtils.alert(e);
-				}
-			}
-			else
-			{
-				mxUtils.alert(mxResources.get('invalidName'));
-			}
-		}
-		
-		// var addBtn = mxUtils.button(mxResources.get('addProperty'), function()
-		// {
-		// 	addProperty(nameInput.value)
-		// });
-
-		// mxEvent.addListener(nameInput, 'keypress', function(e)
-		// {
-		// 	if (e.keyCode == 13 )
-		// 	{
-		// 		addBtn.click();
-		// 	}
-		// });
 		
 		this.init = function()
 		{
@@ -621,16 +559,6 @@ Draw.loadPlugin(function(ui)
 				nameInput.focus();
 			}
 		};
-		
-		// addBtn.setAttribute('title', mxResources.get('addProperty'));
-		// addBtn.setAttribute('disabled', 'disabled');
-		// addBtn.style.textOverflow = 'ellipsis';
-		// addBtn.style.position = 'absolute';
-		// addBtn.style.overflow = 'hidden';
-		// addBtn.style.width = '144px';
-		// addBtn.style.right = '0px';
-		// addBtn.className = 'geBtn';
-		// newProp.appendChild(addBtn);
 
 		var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 		{
@@ -665,6 +593,7 @@ Draw.loadPlugin(function(ui)
 				
 				// Clones and updates the value
 				let newProps = '';
+				let errors = [];
 				for (var i = 0; i < names.length; i++)
 				{
 					if (texts[i] == null || 
@@ -673,7 +602,20 @@ Draw.loadPlugin(function(ui)
 					{
 						continue;
 					}
+
+					try {
+						schemas[i].validationCallback(texts[i].value)
+					}
+					catch (e) {
+						console.error(schemas[i])
+						errors.push(e);
+					}
+
 					newProps += names[i] + ':' + texts[i].value + ',\n';
+				}
+
+				if (errors.length > 0) {
+					throw errors.join('\n');
 				}
 				
 				value.setAttribute("constructorProps", newProps);
@@ -697,23 +639,6 @@ Draw.loadPlugin(function(ui)
 				applyBtn.click();
 			}
 		});
-		
-		// function updateAddBtn()
-		// {
-		// 	if (nameInput.value.length > 0)
-		// 	{
-		// 		addBtn.removeAttribute('disabled');
-		// 	}
-		// 	else
-		// 	{
-		// 		addBtn.setAttribute('disabled', 'disabled');
-		// 	}
-		// };
-
-		// mxEvent.addListener(nameInput, 'keyup', updateAddBtn);
-		
-		// // Catches all changes that don't fire a keyup (such as paste via mouse)
-		// mxEvent.addListener(nameInput, 'change', updateAddBtn);
 		
 		var buttons = document.createElement('div');
 		buttons.style.cssText = 'position:absolute;left:30px;right:30px;text-align:right;bottom:30px;height:40px;'
@@ -819,3 +744,90 @@ Draw.loadPlugin(function(ui)
 		};
 	}
 });
+
+
+
+
+const dropDownMenu = () => {
+	/**
+	 * Adds the label menu items to the given menu and parent.
+	 */
+	StyleFormatPanel.prototype.addEditOps = function(div)
+	{
+		var ss = this.editorUi.getSelectionState();
+
+		if (ss.cells.length == 1)
+		{
+			var editSelect = document.createElement('select');
+			editSelect.style.width = '210px';
+			editSelect.style.textAlign = 'center';
+			editSelect.style.marginBottom = '2px';
+			
+			var ops = ['edit', 'editLink', 'editShape', 'editImage', 'editData',
+				'copyData', 'pasteData', 'editConnectionPoints', 'editGeometry',
+				'editTooltip', 'editStyle'];
+			
+			for (var i = 0; i < ops.length; i++)
+			{
+				var action = this.editorUi.actions.get(ops[i]);
+
+				if (action == null || action.enabled)
+				{
+					var editOption = document.createElement('option');
+					editOption.setAttribute('value', ops[i]);
+					var title = mxResources.get(ops[i]);
+					mxUtils.write(editOption, title + ((ops[i] == 'edit') ? '' : '...'));
+
+					if (action != null && action.shortcut != null)
+					{
+						title += ' (' + action.shortcut + ')';
+					}
+
+					editOption.setAttribute('title', title);
+					editSelect.appendChild(editOption);
+				}
+			}
+
+			if (editSelect.children.length > 1)
+			{
+				div.appendChild(editSelect);
+
+				mxEvent.addListener(editSelect, 'change', mxUtils.bind(this, function(evt)
+				{
+					var action = this.editorUi.actions.get(editSelect.value);
+					editSelect.value = 'edit';
+
+					if (action != null)
+					{
+						action.funct();
+					}
+				}));
+				
+				if (ss.image && ss.cells.length > 0)
+				{
+					var graph = this.editorUi.editor.graph;
+					var state = graph.view.getState(graph.getSelectionCell());
+
+					if (state != null && mxUtils.getValue(state.style, mxConstants.STYLE_IMAGE, null) != null)
+					{
+						var btn = mxUtils.button(mxResources.get('crop') + '...',
+							mxUtils.bind(this, function(evt)
+						{
+							this.editorUi.actions.get('crop').funct();
+						}));
+
+						btn.setAttribute('title', mxResources.get('crop'));
+						editSelect.style.width = '104px';
+						btn.style.width = '104px';
+						btn.style.marginLeft = '2px';
+						btn.style.marginBottom = '2px';
+
+						div.appendChild(btn);
+					}
+				}
+			}
+		}
+
+		return div;
+	};
+}
