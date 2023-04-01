@@ -24,7 +24,7 @@ Draw.loadPlugin(function(ui)
 	/**
 	 * Constructs a new metadata dialog.
 	 */
-	var EditDataDialog = function(ui, cell)
+	var EditAWSDataDialog = function(ui, cell)
 	{
 		var div = document.createElement('div');
 		var graph = ui.editor.graph;
@@ -65,8 +65,8 @@ Draw.loadPlugin(function(ui)
 		var texts = [];
 		var count = 0;
 
-		var id = (EditDataDialog.getDisplayIdForCell != null) ?
-			EditDataDialog.getDisplayIdForCell(ui, cell) : null;
+		var id = (EditAWSDataDialog.getDisplayIdForCell != null) ?
+			EditAWSDataDialog.getDisplayIdForCell(ui, cell) : null;
 
 		var multiStringSplit = function(str, sep1, sep2) {	
 			var ret = {};
@@ -81,7 +81,10 @@ Draw.loadPlugin(function(ui)
 				}
 				
 				[key, val] = subStr.split(sep2);
-				ret[key] = val;
+				if (key == null || val == null) {
+					continue;
+				}
+				ret[key.trim()] = val.trim();
 			}
 			return ret
 		}
@@ -181,7 +184,7 @@ Draw.loadPlugin(function(ui)
 				texts[index].setAttribute('rows', '2');
 			}
 			
-			addRemoveButton(texts[index], name);
+			//addRemoveButton(texts[index], name);
 			
 			if (meta[name] != null && meta[name].editable == false)
 			{
@@ -214,7 +217,7 @@ Draw.loadPlugin(function(ui)
 
 			
 			console.log(data)
-			const props = parseStringProps(attrs['props'].nodeValue);
+			const props = parseStringProps(attrs['props']?.nodeValue);
 			console.log(props)
 			console.log('------------------')
 			for (let key in data) {
@@ -362,13 +365,13 @@ Draw.loadPlugin(function(ui)
 		nameInput.style.padding = '4px';
 		nameInput.style.width = '100%';
 		
-		newProp.appendChild(nameInput);
+		//newProp.appendChild(nameInput);
 		top.appendChild(newProp);
 		div.appendChild(top);
-		
-		var addBtn = mxUtils.button(mxResources.get('addProperty'), function()
+
+		var addProperty = function (property)
 		{
-			var name = nameInput.value;
+			let name = property;
 
 			// Avoid ':' in attribute names which seems to be valid in Chrome
 			if (name.length > 0 && name != 'label' && name != 'placeholders' && name.indexOf(':') < 0)
@@ -402,7 +405,7 @@ Draw.loadPlugin(function(ui)
 						text.focus();
 					}
 
-					addBtn.setAttribute('disabled', 'disabled');
+					//addBtn.setAttribute('disabled', 'disabled');
 					nameInput.value = '';
 				}
 				catch (e)
@@ -414,15 +417,20 @@ Draw.loadPlugin(function(ui)
 			{
 				mxUtils.alert(mxResources.get('invalidName'));
 			}
-		});
+		}
+		
+		// var addBtn = mxUtils.button(mxResources.get('addProperty'), function()
+		// {
+		// 	addProperty(nameInput.value)
+		// });
 
-		mxEvent.addListener(nameInput, 'keypress', function(e)
-		{
-			if (e.keyCode == 13 )
-			{
-				addBtn.click();
-			}
-		});
+		// mxEvent.addListener(nameInput, 'keypress', function(e)
+		// {
+		// 	if (e.keyCode == 13 )
+		// 	{
+		// 		addBtn.click();
+		// 	}
+		// });
 		
 		this.init = function()
 		{
@@ -436,15 +444,15 @@ Draw.loadPlugin(function(ui)
 			}
 		};
 		
-		addBtn.setAttribute('title', mxResources.get('addProperty'));
-		addBtn.setAttribute('disabled', 'disabled');
-		addBtn.style.textOverflow = 'ellipsis';
-		addBtn.style.position = 'absolute';
-		addBtn.style.overflow = 'hidden';
-		addBtn.style.width = '144px';
-		addBtn.style.right = '0px';
-		addBtn.className = 'geBtn';
-		newProp.appendChild(addBtn);
+		// addBtn.setAttribute('title', mxResources.get('addProperty'));
+		// addBtn.setAttribute('disabled', 'disabled');
+		// addBtn.style.textOverflow = 'ellipsis';
+		// addBtn.style.position = 'absolute';
+		// addBtn.style.overflow = 'hidden';
+		// addBtn.style.width = '144px';
+		// addBtn.style.right = '0px';
+		// addBtn.className = 'geBtn';
+		// newProp.appendChild(addBtn);
 
 		var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 		{
@@ -470,6 +478,7 @@ Draw.loadPlugin(function(ui)
 		exportBtn.setAttribute('title', mxResources.get('export'));
 		exportBtn.className = 'geBtn';
 		
+		// Save
 		var applyBtn = mxUtils.button(mxResources.get('apply'), function()
 		{
 			try
@@ -477,35 +486,26 @@ Draw.loadPlugin(function(ui)
 				ui.hideDialog.apply(ui, arguments);
 				
 				// Clones and updates the value
-				value = value.cloneNode(true);
-				var removeLabel = false;
-				
-				console.log(value, names, texts)
+				let newProps = '';
 				for (var i = 0; i < names.length; i++)
 				{
-					if (texts[i] == null)
+					if (texts[i] == null || 
+						texts[i].value == null || 
+						texts[i].value.trim() == '')
 					{
-						value.removeAttribute(names[i]);
+						continue;
 					}
-					else
-					{
-						console.log("ADDEd: ", names[i], texts[i].value, " to ", value, "")
-						value.setAttribute(names[i], texts[i].value);
-						removeLabel = removeLabel || (names[i] == 'placeholder' &&
-							value.getAttribute('placeholders') == '1');
-					}
+					newProps += names[i] + ':' + texts[i].value + ',\n';
 				}
 				
-				// Removes label if placeholder is assigned
-				if (removeLabel)
-				{
-					value.removeAttribute('label');
-				}
-
-				console.log(cell, value)
+				console.log(newProps);
+				value.setAttribute("props", newProps);
 				
 				// Updates the value of the cell (undoable)
+				console.log(value)
+				console.log(cell)
 				graph.getModel().setValue(cell, value);
+				console.log(cell)
 			}
 			catch (e)
 			{
@@ -524,22 +524,22 @@ Draw.loadPlugin(function(ui)
 			}
 		});
 		
-		function updateAddBtn()
-		{
-			if (nameInput.value.length > 0)
-			{
-				addBtn.removeAttribute('disabled');
-			}
-			else
-			{
-				addBtn.setAttribute('disabled', 'disabled');
-			}
-		};
+		// function updateAddBtn()
+		// {
+		// 	if (nameInput.value.length > 0)
+		// 	{
+		// 		addBtn.removeAttribute('disabled');
+		// 	}
+		// 	else
+		// 	{
+		// 		addBtn.setAttribute('disabled', 'disabled');
+		// 	}
+		// };
 
-		mxEvent.addListener(nameInput, 'keyup', updateAddBtn);
+		// mxEvent.addListener(nameInput, 'keyup', updateAddBtn);
 		
-		// Catches all changes that don't fire a keyup (such as paste via mouse)
-		mxEvent.addListener(nameInput, 'change', updateAddBtn);
+		// // Catches all changes that don't fire a keyup (such as paste via mouse)
+		// mxEvent.addListener(nameInput, 'change', updateAddBtn);
 		
 		var buttons = document.createElement('div');
 		buttons.style.cssText = 'position:absolute;left:30px;right:30px;text-align:right;bottom:30px;height:40px;'
@@ -573,10 +573,10 @@ Draw.loadPlugin(function(ui)
 			replace.appendChild(input);
 			mxUtils.write(replace, mxResources.get('placeholders'));
 			
-			if (EditDataDialog.placeholderHelpLink != null)
+			if (EditAWSDataDialog.placeholderHelpLink != null)
 			{
 				var link = document.createElement('a');
-				link.setAttribute('href', EditDataDialog.placeholderHelpLink);
+				link.setAttribute('href', EditAWSDataDialog.placeholderHelpLink);
 				link.setAttribute('title', mxResources.get('help'));
 				link.setAttribute('target', '_blank');
 				link.style.marginLeft = '8px';
@@ -620,7 +620,7 @@ Draw.loadPlugin(function(ui)
 	//
 	function exploreFromHere(selectionCell)
 	{
-		var dlg = new EditDataDialog(ui, selectionCell);
+		var dlg = new EditAWSDataDialog(ui, selectionCell);
 		ui.showDialog(dlg.container, 480, 420, true, false, null, false);
 		dlg.init();
 	};
