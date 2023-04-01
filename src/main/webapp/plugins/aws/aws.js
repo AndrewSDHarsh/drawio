@@ -3,24 +3,43 @@
  */
 Draw.loadPlugin(function(ui)
 {
-	const ENUM_RESOURCE_TYPES = {
-		LAMBDA: 'lambda',
-		DYNAMO: 'dynamo',
-		API: 'api',
-		S3: 's3',
-		SQS: 'sqs',
-	}
-	
 	const ENUM_FIELD_TYPES = {
 		STRING: 'string',
 		NUMBER: 'number',
 		BOOLEAN: 'boolean',
 		RAW: 'raw',
-		RESOURCE: 'resource',
+		RESOURCE: 'resource', 
+		COMPLEX: 'complex', // arrays, dictionaries, etc.
+		ARN: 'arn', // Already deployed resource
+		ID: 'id', // Resource in diagram
+	}
+
+	const defineSchema = (types, defaultVal, required, validationCallback) => {
+		if (validationCallback) {
+
+		}
+
+		return
+	}
+
+	const TypeString = () => {
+		const validation = (value) => {
+			if (typeof value !== 'string') {
+				throw new Error('Value must be a string')
+			}
+		}
+
+		return defineSchema(ENUM_FIELD_TYPES.STRING, null, false, validation)
 	}
 
 	const LAMBDA_PROPERTIES = {
-		code: ENUM_FIELD_TYPES.RAW,
+		code: {
+			default: null,
+			required: true,
+			validFormats: [
+				ENUM_FIELD_TYPES.RAW
+			],
+		},
 		handler: ENUM_FIELD_TYPES.RAW,
 		runtime: ENUM_FIELD_TYPES.RAW,
 		adotInstrumentation: ENUM_FIELD_TYPES.RAW,
@@ -62,7 +81,7 @@ Draw.loadPlugin(function(ui)
 		vpcSubnets: ENUM_FIELD_TYPES.RAW,
 	}
 
-	const DYNAMO_PROPERTIES = {
+	const DYNAMODB_PROPERTIES = {
 		partitionKey: ENUM_FIELD_TYPES.RAW,
 		billingMode: ENUM_FIELD_TYPES.RAW,
 		contributorInsightsEnabled: ENUM_FIELD_TYPES.RAW,
@@ -159,6 +178,44 @@ Draw.loadPlugin(function(ui)
 		visibilityTimeout: ENUM_FIELD_TYPES.RAW,
 	}
 
+	const RESOURCES = {
+		'mxgraph.aws4.key_management_service': {},
+
+		'mxgraph.aws4.cognito': {},
+		'mxgraph.aws4.identity_and_access_management': {},
+		'mxgraph.aws4.kinesis': {},
+		'mxgraph.aws4.sqs': {
+			name: 'SQS',
+			constructorProps: SQS_PROPERTIES,
+		},
+		'mxgraph.aws4.group_vpc': {},
+
+		'mxgraph.aws4.api_gateway': {
+			name: 'API Gateway',
+			constructorProps: REST_API_PROPERTIES,
+		},
+		'mxgraph.aws4.mxgraph.aws4.elastic_load_balancing': {},
+		'mxgraph.aws4.ecs': {},
+		'mxgraph.aws4.cloudfront': {},
+		'mxgraph.aws4.dynamodb': {
+			name: 'DynamoDB',
+			constructorProps: DYNAMODB_PROPERTIES,
+		},
+		'mxgraph.aws4.ec2': {},
+		'mxgraph.aws4.auto_scaling2': {},
+		'mxgraph.aws4.ec2_image_builder': {},
+		'mxgraph.aws4.lambda': {
+			name: 'Lambda',
+			constructorProps: LAMBDA_PROPERTIES,
+		},
+		'mxgraph.aws4.route_53': {},
+		'mxgraph.aws4.s3': {
+			name: 'S3',
+			constructorProps: S3_PROPERTIES,
+		},
+		'mxgraph.aws4.sns': {},
+		'mxgraph.aws4.group_security_group': {},
+	}
 
 
 	var multiStringSplit = function(str, sep1, sep2) {	
@@ -190,31 +247,18 @@ Draw.loadPlugin(function(ui)
 		return multiStringSplit(props, ",", ":")
 	}
 
-	var getResourceType = function(cell)
+	var getResourceInfo = function(cell)
 	{
 		if (cell == null || cell.style == null) {
 			return null;
 		}
 
-		console.log(mxUtils.getCurrentStyle())
-		
-		console.log(cell.style)
 		var styles = getStylenames(cell.style)
-		console.log(styles)
-		switch (styles['resIcon']) {
-			case 'mxgraph.aws4.lambda':
-				return ENUM_RESOURCE_TYPES.LAMBDA;
-			case 'mxgraph.aws4.dynamodb':
-				return ENUM_RESOURCE_TYPES.DYNAMO;
-			case 'mxgraph.aws4.s3':
-				return ENUM_RESOURCE_TYPES.S3;
-			case 'mxgraph.aws4.sqs':
-				return ENUM_RESOURCE_TYPES.SQS;
-			case 'mxgraph.aws4.api_gateway':
-				return ENUM_RESOURCE_TYPES.API;
-			default:
-				return null;
+		if (styles['resIcon'] == null) {
+			return null;
 		}
+
+		return RESOURCES[styles['resIcon']];
 	}
 
 	// Adds resource for action
@@ -230,7 +274,7 @@ Draw.loadPlugin(function(ui)
 		var graph = ui.editor.graph;
 		
 		if (!graph.model.isVertex(graph.getSelectionCell()) ||
-			getResourceType(cell) == null) {
+			getResourceInfo(cell) == null) {
 			return;
 		}
 
@@ -360,39 +404,16 @@ Draw.loadPlugin(function(ui)
 			}
 		};
 
+		const data = getResourceInfo(cell)
+		if (data == null) {
+			throw new Error('Unknown resource type ' + type);
+		}
+
+		// Get props and fill with default values
+		const props = parseStringProps(attrs['constructorProps']?.nodeValue);
 		var temp = [];
-		const type = getResourceType(cell)
-		console.log(type)
-		if (type == null) {
-		}
-
-		let data = null;
-		switch (type) {
-			case ENUM_RESOURCE_TYPES.LAMBDA:
-				data = LAMBDA_PROPERTIES;
-				break;
-			case ENUM_RESOURCE_TYPES.DYNAMO:
-				data = DYNAMO_PROPERTIES;
-				break;
-			case ENUM_RESOURCE_TYPES.S3:
-				data = S3_PROPERTIES;
-				break;
-			case ENUM_RESOURCE_TYPES.API:
-				data = REST_API_PROPERTIES;
-				break;
-			case ENUM_RESOURCE_TYPES.SQS:
-				data = SQS_PROPERTIES;
-				break;
-			default:
-				throw new Error('Unknown resource type ' + type);
-		}
-
-		console.log(data)
-		const props = parseStringProps(attrs['props']?.nodeValue);
-		console.log(props)
-		console.log('------------------')
-		for (let key in data) {
-			if (!data.hasOwnProperty(key)) {
+		for (let key in data.constructorProps) {
+			if (!data.constructorProps.hasOwnProperty(key)) {
 			  continue;
 			}
 
@@ -655,14 +676,10 @@ Draw.loadPlugin(function(ui)
 					newProps += names[i] + ':' + texts[i].value + ',\n';
 				}
 				
-				console.log(newProps);
-				value.setAttribute("props", newProps);
+				value.setAttribute("constructorProps", newProps);
 				
 				// Updates the value of the cell (undoable)
-				console.log(value)
-				console.log(cell)
 				graph.getModel().setValue(cell, value);
-				console.log(cell)
 			}
 			catch (e)
 			{
