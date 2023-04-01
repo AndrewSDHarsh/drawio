@@ -314,6 +314,7 @@ App.startTime = new Date();
  * https://www.diagrams.net/doc/faq/supported-url-parameters
  */
 App.pluginRegistry = {'4xAKTrabTpTzahoLthkwPNUn': 'plugins/explore.js',
+	'aws': 'plugins/aws.js',
 	'ex': 'plugins/explore.js',
 	'ac': 'plugins/connect.js', 'acj': 'plugins/connectJira.js',
 	'ac148': 'plugins/cConf-1-4-8.js', 'ac148cmnt': 'plugins/cConf-comments.js', 
@@ -333,6 +334,7 @@ App.pluginRegistry = {'4xAKTrabTpTzahoLthkwPNUn': 'plugins/explore.js',
 	'tags': 'plugins/tags.js'};
 
 App.publicPlugin = [
+	'aws',
 	'ex',
 	'voice',
 	'tips',
@@ -1368,6 +1370,7 @@ App.embedModePluginsCount = 0;
  */
 App.loadPlugins = function(plugins, useInclude)
 {
+	console.log(plugins)
 	EditorUi.debug('Loading plugins', plugins);
 
 	for (var i = 0; i < plugins.length; i++)

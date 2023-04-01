@@ -8,3 +8,5 @@ services:
       - "9229:9229"
     expose:
       - "9229"
+    volumes:
+      - ./src/main/webapp/plugins:/usr/local/tomcat/webapps/draw/plugins
