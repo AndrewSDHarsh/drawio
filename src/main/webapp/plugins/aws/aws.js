@@ -3,6 +3,54 @@
  */
 Draw.loadPlugin(function(ui)
 {
+	var multiStringSplit = function(str, sep1, sep2) {	
+		var ret = {};
+		if (str == null) {
+			return ret;
+		}
+		
+		let strArr = str.split(sep1);
+		for (let subStr of strArr) {
+			if (!subStr.indexOf(sep2)) {
+				continue
+			}
+			
+			[key, val] = subStr.split(sep2);
+			if (key == null || val == null) {
+				continue;
+			}
+			ret[key.trim()] = val.trim();
+		}
+		return ret
+	}
+
+	var getStylenames = function(styles) {
+		return multiStringSplit(styles, ";", "=")
+	}
+
+	var parseStringProps = function(props) {
+		return multiStringSplit(props, ",", ":")
+	}
+
+	var getResourceType = function(cell)
+	{
+		if (cell == null || cell.style == null) {
+			return null;
+		}
+
+		console.log(mxUtils.getCurrentStyle())
+		
+		console.log(cell.style)
+		var styles = getStylenames(cell.style)
+		console.log(styles)
+		switch (styles['resIcon']) {
+			case 'mxgraph.aws4.lambda':
+				return 'lambda';
+			default:
+				return null;
+		}
+	}
+
 	// Adds resource for action
 	mxResources.parse('exploreFromHere=AWS Config');
 
@@ -15,10 +63,12 @@ Draw.loadPlugin(function(ui)
 		
 		var graph = ui.editor.graph;
 		
-		if (graph.model.isVertex(graph.getSelectionCell()))
-		{
-			this.addMenuItems(menu, ['-', 'exploreFromHere'], null, evt);
+		if (!graph.model.isVertex(graph.getSelectionCell()) ||
+			getResourceType(cell) == null) {
+			return;
 		}
+
+		this.addMenuItems(menu, ['-', 'exploreFromHere'], null, evt);
 	};
 
 	/**
@@ -67,54 +117,6 @@ Draw.loadPlugin(function(ui)
 
 		var id = (EditAWSDataDialog.getDisplayIdForCell != null) ?
 			EditAWSDataDialog.getDisplayIdForCell(ui, cell) : null;
-
-		var multiStringSplit = function(str, sep1, sep2) {	
-			var ret = {};
-			if (str == null) {
-				return ret;
-			}
-			
-			let strArr = str.split(sep1);
-			for (let subStr of strArr) {
-				if (!subStr.indexOf(sep2)) {
-					continue
-				}
-				
-				[key, val] = subStr.split(sep2);
-				if (key == null || val == null) {
-					continue;
-				}
-				ret[key.trim()] = val.trim();
-			}
-			return ret
-		}
-
-		var getStylenames = function(styles) {
-			return multiStringSplit(styles, ";", "=")
-		}
-
-		var parseStringProps = function(props) {
-			return multiStringSplit(props, ",", ":")
-		}
-
-		var getResourceType = function(cell)
-		{
-			if (cell == null || cell.style == null) {
-				return null;
-			}
-
-			console.log(mxUtils.getCurrentStyle())
-			
-			console.log(cell.style)
-			var styles = getStylenames(cell.style)
-			console.log(styles)
-			switch (styles['resIcon']) {
-				case 'mxgraph.aws4.lambda':
-					return 'lambda';
-				default:
-					return null;
-			}
-		}
 		
 		var addRemoveButton = function(text, name)
 		{
@@ -195,58 +197,51 @@ Draw.loadPlugin(function(ui)
 		var temp = [];
 		const type = getResourceType(cell)
 		console.log(type)
-		if (type == 'lambda') 
-		{
-			const data = {
-				"runtime": "raw",
-				"code": "raw",
-				"handler": "string",
-				"vpc": "resource",
-			
-				"description": "string",
-				"profiling": "boolean",
-				"deadLetterQueue": "resource",
-				"deadLetterQueueEnabled": "boolean",
-				"allowAllOutbound": "boolean",
-				"securityGroups": "resource[]",
-				"memorySize": "number",
-				"functionName": "string",
-				"timeout": "raw",
-				"environment": "raw"
-			};//require('./lambdaProps.json');
-
-			
-			console.log(data)
-			const props = parseStringProps(attrs['props']?.nodeValue);
-			console.log(props)
-			console.log('------------------')
-			for (let key in data) {
-				if (!data.hasOwnProperty(key)) {
-				  continue;
-				}
-
-				let val = "";
-				for (let propKey in props) {
-					if (propKey == key) {
-						val = props[propKey];
-						break;
-					}
-				}
-				temp.push({name: key, value: val});
-			}
+		if (type == null) {
 		}
-		else 
-		{
-			var isLayer = graph.getModel().getParent(cell) == graph.getModel().getRoot();
-	
-			for (var i = 0; i < attrs.length; i++)
-			{
-				if ((attrs[i].nodeName != 'label' || Graph.translateDiagram ||
-					isLayer) && attrs[i].nodeName != 'placeholders')
-				{
-					temp.push({name: attrs[i].nodeName, value: attrs[i].nodeValue});
+
+		let data = null;
+		switch (type) {
+			case 'lambda':
+				data = {
+					"runtime": "raw",
+					"code": "raw",
+					"handler": "string",
+					"vpc": "resource",
+				
+					"description": "string",
+					"profiling": "boolean",
+					"deadLetterQueue": "resource",
+					"deadLetterQueueEnabled": "boolean",
+					"allowAllOutbound": "boolean",
+					"securityGroups": "resource[]",
+					"memorySize": "number",
+					"functionName": "string",
+					"timeout": "raw",
+					"environment": "raw"
+				};//require('./lambdaProps.json');
+				break;
+			default:
+				throw new Error('Unknown resource type ' + type);
+		}
+
+		console.log(data)
+		const props = parseStringProps(attrs['props']?.nodeValue);
+		console.log(props)
+		console.log('------------------')
+		for (let key in data) {
+			if (!data.hasOwnProperty(key)) {
+			  continue;
+			}
+
+			let val = "";
+			for (let propKey in props) {
+				if (propKey == key) {
+					val = props[propKey];
+					break;
 				}
 			}
+			temp.push({name: key, value: val});
 		}
 		
 		// Sorts by name
