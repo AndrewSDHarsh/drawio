@@ -7,9 +7,6 @@ Draw.loadPlugin(function(ui)
 	mxResources.parse('exploreFromHere=AWS Config');
 
 	console.log("AWS Config plugin loaded")
-	
-	// Max number of edges per page
-	var pageSize = 20;
 
 	var uiCreatePopupMenu = ui.menus.createPopupMenu;
 	ui.menus.createPopupMenu = function(menu, cell, evt)
@@ -70,6 +67,51 @@ Draw.loadPlugin(function(ui)
 
 		var id = (EditDataDialog.getDisplayIdForCell != null) ?
 			EditDataDialog.getDisplayIdForCell(ui, cell) : null;
+
+		var multiStringSplit = function(str, sep1, sep2) {	
+			var ret = {};
+			if (str == null) {
+				return ret;
+			}
+			
+			let strArr = str.split(sep1);
+			for (let subStr of strArr) {
+				if (!subStr.indexOf(sep2)) {
+					continue
+				}
+				
+				[key, val] = subStr.split(sep2);
+				ret[key] = val;
+			}
+			return ret
+		}
+
+		var getStylenames = function(styles) {
+			return multiStringSplit(styles, ";", "=")
+		}
+
+		var parseStringProps = function(props) {
+			return multiStringSplit(props, ",", ":")
+		}
+
+		var getResourceType = function(cell)
+		{
+			if (cell == null || cell.style == null) {
+				return null;
+			}
+
+			console.log(mxUtils.getCurrentStyle())
+			
+			console.log(cell.style)
+			var styles = getStylenames(cell.style)
+			console.log(styles)
+			switch (styles['resIcon']) {
+				case 'mxgraph.aws4.lambda':
+					return 'lambda';
+				default:
+					return null;
+			}
+		}
 		
 		var addRemoveButton = function(text, name)
 		{
@@ -146,16 +188,61 @@ Draw.loadPlugin(function(ui)
 				texts[index].setAttribute('disabled', 'disabled');
 			}
 		};
-		
-		var temp = [];
-		var isLayer = graph.getModel().getParent(cell) == graph.getModel().getRoot();
 
-		for (var i = 0; i < attrs.length; i++)
+		var temp = [];
+		const type = getResourceType(cell)
+		console.log(type)
+		if (type == 'lambda') 
 		{
-			if ((attrs[i].nodeName != 'label' || Graph.translateDiagram ||
-				isLayer) && attrs[i].nodeName != 'placeholders')
+			const data = {
+				"runtime": "raw",
+				"code": "raw",
+				"handler": "string",
+				"vpc": "resource",
+			
+				"description": "string",
+				"profiling": "boolean",
+				"deadLetterQueue": "resource",
+				"deadLetterQueueEnabled": "boolean",
+				"allowAllOutbound": "boolean",
+				"securityGroups": "resource[]",
+				"memorySize": "number",
+				"functionName": "string",
+				"timeout": "raw",
+				"environment": "raw"
+			};//require('./lambdaProps.json');
+
+			
+			console.log(data)
+			const props = parseStringProps(attrs['props'].nodeValue);
+			console.log(props)
+			console.log('------------------')
+			for (let key in data) {
+				if (!data.hasOwnProperty(key)) {
+				  continue;
+				}
+
+				let val = "";
+				for (let propKey in props) {
+					if (propKey == key) {
+						val = props[propKey];
+						break;
+					}
+				}
+				temp.push({name: key, value: val});
+			}
+		}
+		else 
+		{
+			var isLayer = graph.getModel().getParent(cell) == graph.getModel().getRoot();
+	
+			for (var i = 0; i < attrs.length; i++)
 			{
-				temp.push({name: attrs[i].nodeName, value: attrs[i].nodeValue});
+				if ((attrs[i].nodeName != 'label' || Graph.translateDiagram ||
+					isLayer) && attrs[i].nodeName != 'placeholders')
+				{
+					temp.push({name: attrs[i].nodeName, value: attrs[i].nodeValue});
+				}
 			}
 		}
 		
@@ -393,6 +480,7 @@ Draw.loadPlugin(function(ui)
 				value = value.cloneNode(true);
 				var removeLabel = false;
 				
+				console.log(value, names, texts)
 				for (var i = 0; i < names.length; i++)
 				{
 					if (texts[i] == null)
@@ -401,6 +489,7 @@ Draw.loadPlugin(function(ui)
 					}
 					else
 					{
+						console.log("ADDEd: ", names[i], texts[i].value, " to ", value, "")
 						value.setAttribute(names[i], texts[i].value);
 						removeLabel = removeLabel || (names[i] == 'placeholder' &&
 							value.getAttribute('placeholders') == '1');
@@ -412,6 +501,8 @@ Draw.loadPlugin(function(ui)
 				{
 					value.removeAttribute('label');
 				}
+
+				console.log(cell, value)
 				
 				// Updates the value of the cell (undoable)
 				graph.getModel().setValue(cell, value);
@@ -529,26 +620,9 @@ Draw.loadPlugin(function(ui)
 	//
 	function exploreFromHere(selectionCell)
 	{
-		var graph = ui.editor.graph;
-		console.log(graph)
-		console.log(selectionCell)
-		console.log(selectionCell.value.attributes)
-
-		// for (cell in graph.model.cells) {
-		// 	console.log(cell)
-		// }
-		
 		var dlg = new EditDataDialog(ui, selectionCell);
 		ui.showDialog(dlg.container, 480, 420, true, false, null, false);
 		dlg.init();
-
-		// var text = graph.getIndexableText(
-		// 	(graph.isSelectionEmpty()) ? null :
-		// 	graph.getSelectionCells());
-		// var dlg = new EmbedDialog(ui, text, null,
-		// 	null, null, 'Extracted Text:');
-		// ui.showDialog(dlg.container, 450, 240, true, true);
-		// dlg.init();
 	};
 	
 	// Adds action

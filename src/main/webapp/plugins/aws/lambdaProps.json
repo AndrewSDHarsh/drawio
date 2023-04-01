@@ -1,0 +1,17 @@
+{
+    "runtime": "raw",
+    "code": "raw",
+    "handler": "string",
+    "vpc": "resource",
+
+    "description": "string",
+    "profiling": "boolean",
+    "deadLetterQueue": "resource",
+    "deadLetterQueueEnabled": "boolean",
+    "allowAllOutbound": "boolean",
+    "securityGroups": "resource[]",
+    "memorySize": "number",
+    "functionName": "string",
+    "timeout": "raw",
+    "environment": "raw"
+}
