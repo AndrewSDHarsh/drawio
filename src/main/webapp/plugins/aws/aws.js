@@ -8,7 +8,7 @@ Draw.loadPlugin(function(ui)
 		NUMBER: 'number',
 		BOOLEAN: 'boolean',
 		ENUM: 'enum',
-		RAW: 'raw', // Straight up raw typescript
+		RAW: 'raw', // Straight up raw typescript, Remove eventually
 		RESOURCE: 'resource', // Resource in diagram
 		ARN: 'arn', // Already deployed resource
 		CUSTOM: 'custom', // arrays, dictionaries, etc. 
@@ -252,6 +252,16 @@ Draw.loadPlugin(function(ui)
 		'mxgraph.aws4.lambda': {
 			name: 'Lambda',
 			constructorProps: LAMBDA_PROPERTIES,
+			fromARNProps: {
+
+			},
+			fromAttributeProps: {
+
+			},
+			fromNameProps: {
+
+			},
+
 		},
 		'mxgraph.aws4.route_53': {},
 		'mxgraph.aws4.s3': {
@@ -358,25 +368,20 @@ Draw.loadPlugin(function(ui)
 		{
 			// ignore
 		}
+
 		
-		// Creates the dialog contents
-		var form = new mxForm('properties');
-		form.table.style.width = '100%';
 
 		var attrs = value.attributes;
 		var names = [];
 		var texts = [];
 		var schemas = [];
 		var count = 0;
-
-		var id = (EditAWSDataDialog.getDisplayIdForCell != null) ?
-			EditAWSDataDialog.getDisplayIdForCell(ui, cell) : null;
 		
-		var addTextArea = function(index, name, schema)
+		var addTextArea = function(form, index, name, schema)
 		{
 			const value = schema?.default || '';
 			names[index] = name;
-			texts[index] = form.addTextarea(names[count] + ':', value, 2);
+			texts[index] = form.addTextarea(name + ':', value, 2);
 			texts[index].style.width = '100%';
 			schemas[index] = schema;
 			
@@ -391,58 +396,98 @@ Draw.loadPlugin(function(ui)
 			}
 		};
 
-		const data = getResourceInfo(cell)
-		if (data == null) {
-			throw new Error('Unknown resource type ' + type);
-		}
+		const createConstructorProps = function() {
+			// Creates the dialog contents
+			var form = new mxForm('properties');
+			form.table.style.width = '100%';
+					
+			const data = getResourceInfo(cell)
+			if (data == null) {
+				throw new Error('Unknown resource type ' + type);
+			}
 
-		// Get props and fill with default values
-		const props = parseStringProps(attrs['constructorProps']?.nodeValue);
-		var uiFieldsSchema = [];
-		console.log(props)
-		for (let key in data.constructorProps) {
-			if (!data.constructorProps.hasOwnProperty(key)) {
-			  continue;
+			// Get props and fill with default values
+			const props = parseStringProps(attrs['constructorProps']?.nodeValue);
+			var uiFieldsSchema = [];
+			console.log(props)
+			for (let key in data.constructorProps) {
+				if (!data.constructorProps.hasOwnProperty(key)) {
+				continue;
+				}
+				
+				// TODO ASH Make a copy since this directly updates the schema
+				const schema = data.constructorProps[key];
+
+				// Check if there is a value for this property in the props
+				for (let propKey in props) {
+					if (propKey != key) {
+						continue;
+					}
+
+					if (schema.validationCallback != null) {
+						schema.validationCallback(props[propKey])
+						schema.default = props[propKey]
+					} else {
+						schema.default = props[propKey]
+					}
+					break;
+				}
+
+				console.log(schema)
+				uiFieldsSchema.push({name: key, value: schema});
 			}
 			
-			// TODO ASH Make a copy since this directly updates the schema
-			const schema = data.constructorProps[key];
-
-			// Check if there is a value for this property in the props
-			for (let propKey in props) {
-				if (propKey != key) {
-					continue;
+			// Sorts by name
+			uiFieldsSchema.sort(function(a, b)
+			{
+				if (a.name < b.name)
+				{
+					return -1;
 				}
-
-				if (schema.validationCallback != null) {
-					schema.validationCallback(props[propKey])
-					schema.default = props[propKey]
-				} else {
-					schema.default = props[propKey]
+				else if (a.name > b.name)
+				{
+					return 1;
 				}
-				break;
+				else
+				{
+					return 0;
+				}
+			});
+
+			names = [];
+			texts = [];
+			schemas = [];
+			count = 0;
+			for (var i = 0; i < uiFieldsSchema.length; i++)
+			{
+				addTextArea(form, count, uiFieldsSchema[i].name, uiFieldsSchema[i].value);
+				count++;
 			}
 
-			console.log(schema)
-			uiFieldsSchema.push({name: key, value: schema});
+			return form;
+		};
+
+		const createARNProps = function() {
+			var form = new mxForm('properties');
+
+			let val = attrs['fromARN'];
+			if (!val) {
+				val = '';
+			}
+			console.log(val)
+
+			names = [];
+			texts = [];
+			schemas = [];
+			count = 0;
+			addTextArea(form, count, "From ARN", TypeString(val));
+			return form;
 		}
+
 		
-		// Sorts by name
-		uiFieldsSchema.sort(function(a, b)
-		{
-			if (a.name < b.name)
-			{
-				return -1;
-			}
-			else if (a.name > b.name)
-			{
-				return 1;
-			}
-			else
-			{
-				return 0;
-			}
-		});
+		
+		var id = (EditAWSDataDialog.getDisplayIdForCell != null) ?
+		EditAWSDataDialog.getDisplayIdForCell(ui, cell) : null;
 
 		if (id != null)
 		{	
@@ -507,11 +552,6 @@ Draw.loadPlugin(function(ui)
 			});
 		}
 		
-		for (var i = 0; i < uiFieldsSchema.length; i++)
-		{
-			addTextArea(count, uiFieldsSchema[i].name, uiFieldsSchema[i].value);
-			count++;
-		}
 		
 		var top = document.createElement('div');
 		top.style.position = 'absolute';
@@ -521,6 +561,23 @@ Draw.loadPlugin(function(ui)
 		top.style.bottom = '80px';
 		top.style.overflowY = 'auto';
 		
+		let form = createConstructorProps();
+
+		const dropDownSelection = Object.keys(getResourceInfo(cell))
+		top.appendChild(dropDownMenu(dropDownSelection, (e) => { 
+			console.log(e.srcElement.value) 
+			form.table.remove();	
+
+			if (e.srcElement.value === 'constructorProps') {
+				form.table = createConstructorProps().table;
+			} else if (e.srcElement.value === 'fromARNProps') {
+				form.table = createARNProps().table;
+			} else {
+				form.table = new mxForm('properties').table;
+			}
+
+			top.appendChild(form.table);
+		}));
 		top.appendChild(form.table);
 
 		var newProp = document.createElement('div');
@@ -748,7 +805,37 @@ Draw.loadPlugin(function(ui)
 
 
 
-const dropDownMenu = () => {
+const dropDownMenu = (options, callback = undefined) => {
+
+	if (!options) {
+		return null;
+	}
+
+	var editSelect = document.createElement('select');
+	// Add selection options to the select box
+	for (var i = 0; i < options.length; i++)
+	{
+		var editOption = document.createElement('option');
+		editOption.setAttribute('value', options[i]);
+		editOption.setAttribute('title', options[i]);
+		mxUtils.write(editOption, options[i]);
+		editSelect.appendChild(editOption);
+	}
+
+	if (editSelect.children.length < 1) {
+		return null;
+	}
+
+	if (callback) {
+		// Add event listener to the select box
+		editSelect.addEventListener('change', function(evt) {
+			callback(evt);
+		});
+	}
+
+	return editSelect;
+
+
 	/**
 	 * Adds the label menu items to the given menu and parent.
 	 */
