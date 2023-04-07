@@ -3,6 +3,113 @@
  */
 Draw.loadPlugin(function(ui)
 {
+	
+
+	const createResourceFinder = (form, resourceType) => {
+		let resources = [
+			'arn:aws:lambda:us-east-1:123456789012:function:my-function',
+			'arn:aws:lambda:us-east-1:123456789012:function:my-function:PROD',
+
+		];
+
+		const combo = form.addCombo('Resource', false);
+		for (let resource of resources) {
+			combo.addItem(resource);
+		}
+
+		// finder.style.width = '100%';
+		// finder.setAttribute('placeholder', 'Search for a resource');
+		// finder.addEventListener('keyup', (e) => {
+		// 	if (e.keyCode === 13) {
+		// 		const resource = e.target.value;
+		// 		if (resource) {
+		// 			const cell = ui.editor.graph.getModel().getCell(resource);
+		// 			if (cell) {
+		// 				ui.editor.graph.setSelectionCell(cell);
+		// 			}
+		// 		}
+		// 	}
+		// });
+		return combo;
+	}
+
+
+	// LAMBDA
+		// Form for selecting the code source
+		const createLambdaCodeSourceForm = (form) => {
+			const codeSource = form.addCombo('Code Source', false);
+			codeSource.addItem('Inline');
+			codeSource.addItem('S3');
+			codeSource.addItem('GitHub');
+			codeSource.addItem('CodeCommit');
+
+			return codeSource;
+		}
+
+
+		// Form for assigning roles and permissions
+
+		// Form for alarms and metrics
+
+		// Form for managing layers and versions
+
+		// Form for handling imported lambdas
+
+	// API GATEWAY
+		// Form for defining the API (Defined on the arrows)
+
+		// Form for defining Usage plans and API keys
+
+		// Form for handling imported api gateways
+
+	// S3
+		// Form for bucket encryptiopn
+
+		// Form for bucket roles and permissions
+
+		// Form for bucket versioning
+
+		// Form for website redirection
+
+		// Form for handling imported s3
+
+	const createLambdaForm = () => {
+		const properties = [
+
+		]
+
+		let form = mxForm('Lambda')
+
+		
+		let form1 = new mxForm('properties');
+		form1.table.style.width = '100%';
+		let textBox =  form1.addTextarea("test:32", 2);
+		textBox.style.width = '100%';
+		textBox.setAttribute('rows', '2');
+
+		// top.appendChild(form1.table);
+		// console.log(form1);
+		// console.log(textBox);
+
+
+
+		return form
+	}
+
+
+	const createGeneralForm = (form, properties) => {
+		let form1 = new mxForm('properties');
+		form1.table.style.width = '100%';
+
+		for (let property of properties) {
+			let text = form1.addTextarea(property + ':', '', 2);
+			text.style.width = '100%';
+		}
+
+		return form1;
+	}
+
+	
 	const ENUM_FIELD_TYPES = {
 		STRING: 'string',
 		NUMBER: 'number',
@@ -261,7 +368,6 @@ Draw.loadPlugin(function(ui)
 			fromNameProps: {
 
 			},
-
 		},
 		'mxgraph.aws4.route_53': {},
 		'mxgraph.aws4.s3': {
@@ -328,23 +434,15 @@ Draw.loadPlugin(function(ui)
 		
 		var graph = ui.editor.graph;
 		
-		if (!graph.model.isVertex(graph.getSelectionCell()) ||
-			getResourceInfo(cell) == null) {
+		if (!graph.model.isVertex(graph.getSelectionCell()) || getResourceInfo(cell) == null) {
 			return;
 		}
 
 		this.addMenuItems(menu, ['-', 'exploreFromHere'], null, evt);
 	};
 
-	/**
-	 * Constructs a new metadata dialog.
-	 */
-	var EditAWSDataDialog = function(ui, cell)
-	{
-		var div = document.createElement('div');
-		var graph = ui.editor.graph;
-		
-		var value = graph.getModel().getValue(cell);
+	const getValue = (graph, cell) => {
+		let value = graph.getModel().getValue(cell);
 		
 		// Converts the value to an XML node
 		if (!mxUtils.isNode(value))
@@ -354,11 +452,24 @@ Draw.loadPlugin(function(ui)
 			obj.setAttribute('label', value || '');
 			value = obj;
 		}
+
+		return value;
+	}
+
+	/**
+	 * Constructs a new metadata dialog.
+	 */
+	var EditAWSDataDialog = function(ui, cell)
+	{
+		var div = document.createElement('div');
+		var graph = ui.editor.graph;
+		
+		let value = getValue(graph, cell)
 		
 		var meta = {};
 		try
 		{
-			var temp = mxUtils.getValue(ui.editor.graph.getCurrentCellStyle(cell), 'metaData', null);
+			var temp = mxUtils.getValue(graph.getCurrentCellStyle(cell), 'metaData', null);
 			if (temp != null)
 			{
 				meta = JSON.parse(temp);
@@ -395,6 +506,20 @@ Draw.loadPlugin(function(ui)
 				texts[index].setAttribute('disabled', 'disabled');
 			}
 		};
+
+		const addTextbox = function(form, label, defaultVal = '') {
+
+		}
+
+		const createPropertiesForm = (propertiesArray) => {
+			let form = new mxForm('properties');
+
+			for (let property of propertiesArray) {
+				addTextArea(form, count++, property.name, property);
+			}
+
+			return form
+		}
 
 		const createConstructorProps = function() {
 			// Creates the dialog contents
@@ -484,75 +609,6 @@ Draw.loadPlugin(function(ui)
 			return form;
 		}
 
-		
-		
-		var id = (EditAWSDataDialog.getDisplayIdForCell != null) ?
-		EditAWSDataDialog.getDisplayIdForCell(ui, cell) : null;
-
-		if (id != null)
-		{	
-			var text = document.createElement('div');
-			text.style.width = '100%';
-			text.style.fontSize = '11px';
-			text.style.textAlign = 'center';
-			mxUtils.write(text, id);
-			
-			var idInput = form.addField(mxResources.get('id') + ':', text);
-			
-			mxEvent.addListener(text, 'dblclick', function(evt)
-			{
-				var dlg = new FilenameDialog(ui, id, mxResources.get('apply'), mxUtils.bind(this, function(value)
-				{
-					if (value != null && value.length > 0 && value != id)
-					{
-						if (graph.model.isRoot(cell))
-						{
-							var page = ui.getPageById(id);
-
-							if (page != null)
-							{
-								if (ui.getPageById(value) == null)
-								{
-									var index = ui.getPageIndex(page);
-
-									if (index >= 0)
-									{
-										ui.removePage(page);
-										page.node.setAttribute('id', value);
-										id = value;
-										idInput.innerHTML = mxUtils.htmlEntities(value);
-										ui.insertPage(page, index);
-									}
-								}
-								else
-								{
-									ui.handleError({message: mxResources.get('alreadyExst', [mxResources.get('page')])});
-								}
-							}
-						}
-						else
-						{
-							if (graph.getModel().getCell(value) == null)
-							{
-								graph.getModel().cellRemoved(cell);
-								cell.setId(value);
-								id = value;
-								idInput.innerHTML = mxUtils.htmlEntities(value);
-								graph.getModel().cellAdded(cell);
-							}
-							else
-							{
-								ui.handleError({message: mxResources.get('alreadyExst', [value])});
-							}
-						}
-					}
-				}), mxResources.get('id'), null, null, null, null, null, null, 200);
-				ui.showDialog(dlg.container, 300, 80, true, true);
-				dlg.init();
-			});
-		}
-		
-		
 		var top = document.createElement('div');
 		top.style.position = 'absolute';
 		top.style.top = '30px';
