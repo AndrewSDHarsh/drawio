@@ -379,8 +379,8 @@ Draw.loadPlugin(function(ui)
 	}
 
 
-	var multiStringSplit = function(str, sep1, sep2) {	
-		var ret = {};
+	let multiStringSplit = function(str, sep1, sep2) {	
+		let ret = {};
 		if (str == null) {
 			return ret;
 		}
@@ -400,21 +400,21 @@ Draw.loadPlugin(function(ui)
 		return ret
 	}
 
-	var getStylenames = function(styles) {
+	let getStylenames = function(styles) {
 		return multiStringSplit(styles, ";", "=")
 	}
 
-	var parseStringProps = function(props) {
+	let parseStringProps = function(props) {
 		return multiStringSplit(props, ",", ":")
 	}
 
-	var getResourceInfo = function(cell)
+	let getResourceInfo = function(cell)
 	{
 		if (cell == null || cell.style == null) {
 			return null;
 		}
 
-		var styles = getStylenames(cell.style)
+		let styles = getStylenames(cell.style)
 		if (styles['resIcon'] == null) {
 			return null;
 		}
@@ -427,13 +427,12 @@ Draw.loadPlugin(function(ui)
 
 	console.log("AWS Config plugin loaded")
 
-	var uiCreatePopupMenu = ui.menus.createPopupMenu;
+	let uiCreatePopupMenu = ui.menus.createPopupMenu;
 	ui.menus.createPopupMenu = function(menu, cell, evt)
 	{
 		uiCreatePopupMenu.apply(this, arguments);
 		
-		var graph = ui.editor.graph;
-		
+		let graph = ui.editor.graph;
 		if (!graph.model.isVertex(graph.getSelectionCell()) || getResourceInfo(cell) == null) {
 			return;
 		}
@@ -447,8 +446,8 @@ Draw.loadPlugin(function(ui)
 		// Converts the value to an XML node
 		if (!mxUtils.isNode(value))
 		{
-			var doc = mxUtils.createXmlDocument();
-			var obj = doc.createElement('object');
+			let doc = mxUtils.createXmlDocument();
+			let obj = doc.createElement('object');
 			obj.setAttribute('label', value || '');
 			value = obj;
 		}
@@ -456,20 +455,11 @@ Draw.loadPlugin(function(ui)
 		return value;
 	}
 
-	/**
-	 * Constructs a new metadata dialog.
-	 */
-	var EditAWSDataDialog = function(ui, cell)
-	{
-		var div = document.createElement('div');
-		var graph = ui.editor.graph;
-		
-		let value = getValue(graph, cell)
-		
-		var meta = {};
+	const getMeta = (graph, cell) => {
+		let meta = {};
 		try
 		{
-			var temp = mxUtils.getValue(graph.getCurrentCellStyle(cell), 'metaData', null);
+			let temp = mxUtils.getValue(graph.getCurrentCellStyle(cell), 'metaData', null);
 			if (temp != null)
 			{
 				meta = JSON.parse(temp);
@@ -479,137 +469,150 @@ Draw.loadPlugin(function(ui)
 		{
 			// ignore
 		}
+		return meta
+	}
 
+	let addTextArea = function(form, index, name, schema)
+	{
+		const value = schema?.default || '';
+		names[index] = name;
+		texts[index] = form.addTextarea(name + ':', value, 2);
+		texts[index].style.width = '100%';
+		schemas[index] = schema;
 		
-
-		var attrs = value.attributes;
-		var names = [];
-		var texts = [];
-		var schemas = [];
-		var count = 0;
-		
-		var addTextArea = function(form, index, name, schema)
+		if (value.indexOf('\n') > 0)
 		{
-			const value = schema?.default || '';
-			names[index] = name;
-			texts[index] = form.addTextarea(name + ':', value, 2);
-			texts[index].style.width = '100%';
-			schemas[index] = schema;
-			
-			if (value.indexOf('\n') > 0)
-			{
-				texts[index].setAttribute('rows', '2');
-			}
-			
-			if (meta[name] != null && meta[name].editable == false)
-			{
-				texts[index].setAttribute('disabled', 'disabled');
-			}
-		};
+			texts[index].setAttribute('rows', '2');
+		}
+		
+		// if (meta[name] != null && meta[name].editable == false)
+		// {
+		// 	texts[index].setAttribute('disabled', 'disabled');
+		// }
+	};
 
-		const addTextbox = function(form, label, defaultVal = '') {
+	const addTextbox = function(form, label, defaultVal = '') {
 
+	}
+
+	const createPropertiesForm = (propertiesArray) => {
+		let form = new mxForm('properties');
+
+		let count = 0;
+		for (let property of propertiesArray) {
+			addTextArea(form, count++, property.name, property);
 		}
 
-		const createPropertiesForm = (propertiesArray) => {
-			let form = new mxForm('properties');
+		return form
+	}
 
-			for (let property of propertiesArray) {
-				addTextArea(form, count++, property.name, property);
-			}
-
-			return form
-		}
-
-		const createConstructorProps = function() {
-			// Creates the dialog contents
-			var form = new mxForm('properties');
-			form.table.style.width = '100%';
-					
-			const data = getResourceInfo(cell)
-			if (data == null) {
-				throw new Error('Unknown resource type ' + type);
-			}
-
-			// Get props and fill with default values
-			const props = parseStringProps(attrs['constructorProps']?.nodeValue);
-			var uiFieldsSchema = [];
-			console.log(props)
-			for (let key in data.constructorProps) {
-				if (!data.constructorProps.hasOwnProperty(key)) {
-				continue;
-				}
+	const createConstructorProps = function(cell, attrs) {
+		// Creates the dialog contents
+		let form = new mxForm('properties');
+		form.table.style.width = '100%';
 				
-				// TODO ASH Make a copy since this directly updates the schema
-				const schema = data.constructorProps[key];
-
-				// Check if there is a value for this property in the props
-				for (let propKey in props) {
-					if (propKey != key) {
-						continue;
-					}
-
-					if (schema.validationCallback != null) {
-						schema.validationCallback(props[propKey])
-						schema.default = props[propKey]
-					} else {
-						schema.default = props[propKey]
-					}
-					break;
-				}
-
-				console.log(schema)
-				uiFieldsSchema.push({name: key, value: schema});
-			}
-			
-			// Sorts by name
-			uiFieldsSchema.sort(function(a, b)
-			{
-				if (a.name < b.name)
-				{
-					return -1;
-				}
-				else if (a.name > b.name)
-				{
-					return 1;
-				}
-				else
-				{
-					return 0;
-				}
-			});
-
-			names = [];
-			texts = [];
-			schemas = [];
-			count = 0;
-			for (var i = 0; i < uiFieldsSchema.length; i++)
-			{
-				addTextArea(form, count, uiFieldsSchema[i].name, uiFieldsSchema[i].value);
-				count++;
-			}
-
-			return form;
-		};
-
-		const createARNProps = function() {
-			var form = new mxForm('properties');
-
-			let val = attrs['fromARN'];
-			if (!val) {
-				val = '';
-			}
-			console.log(val)
-
-			names = [];
-			texts = [];
-			schemas = [];
-			count = 0;
-			addTextArea(form, count, "From ARN", TypeString(val));
-			return form;
+		const data = getResourceInfo(cell)
+		if (data == null) {
+			throw new Error('Unknown resource type ' + type);
 		}
 
-		var top = document.createElement('div');
+		// Get props and fill with default values
+		const props = parseStringProps(attrs['constructorProps']?.nodeValue);
+		let uiFieldsSchema = [];
+		console.log(props)
+		for (let key in data.constructorProps) {
+			if (!data.constructorProps.hasOwnProperty(key)) {
+			continue;
+			}
+			
+			// TODO ASH Make a copy since this directly updates the schema
+			const schema = data.constructorProps[key];
+
+			// Check if there is a value for this property in the props
+			for (let propKey in props) {
+				if (propKey != key) {
+					continue;
+				}
+
+				if (schema.validationCallback != null) {
+					schema.validationCallback(props[propKey])
+					schema.default = props[propKey]
+				} else {
+					schema.default = props[propKey]
+				}
+				break;
+			}
+
+			console.log(schema)
+			uiFieldsSchema.push({name: key, value: schema});
+		}
+		
+		// Sorts by name
+		uiFieldsSchema.sort(function(a, b)
+		{
+			if (a.name < b.name)
+			{
+				return -1;
+			}
+			else if (a.name > b.name)
+			{
+				return 1;
+			}
+			else
+			{
+				return 0;
+			}
+		});
+
+		names = [];
+		texts = [];
+		schemas = [];
+		let count = 0;
+		for (let i = 0; i < uiFieldsSchema.length; i++)
+		{
+			addTextArea(form, count++, uiFieldsSchema[i].name, uiFieldsSchema[i].value);
+		}
+
+		return form;
+	};
+
+	const createARNProps = function() {
+		let form = new mxForm('properties');
+
+		let val = attrs['fromARN'];
+		if (!val) {
+			val = '';
+		}
+		console.log(val)
+
+		names = [];
+		texts = [];
+		schemas = [];
+		let count = 0;
+		addTextArea(form, count, "From ARN", TypeString(val));
+		return form;
+	}
+
+
+	/**
+	 * Constructs a new metadata dialog.
+	 */
+	let EditAWSDataDialog = function(ui, cell)
+	{
+		let div = document.createElement('div');
+		let graph = ui.editor.graph;
+		
+		let value = getValue(graph, cell)
+		let meta = getMeta(graph, cell)
+
+		
+
+		let attrs = value.attributes;
+		let names = [];
+		let texts = [];
+		let schemas = [];
+
+		let top = document.createElement('div');
 		top.style.position = 'absolute';
 		top.style.top = '30px';
 		top.style.left = '30px';
@@ -617,7 +620,7 @@ Draw.loadPlugin(function(ui)
 		top.style.bottom = '80px';
 		top.style.overflowY = 'auto';
 		
-		let form = createConstructorProps();
+		let form = createConstructorProps(cell, attrs);
 
 		const dropDownSelection = Object.keys(getResourceInfo(cell))
 		top.appendChild(dropDownMenu(dropDownSelection, (e) => { 
@@ -625,7 +628,7 @@ Draw.loadPlugin(function(ui)
 			form.table.remove();	
 
 			if (e.srcElement.value === 'constructorProps') {
-				form.table = createConstructorProps().table;
+				form.table = createConstructorProps(cell, attrs).table;
 			} else if (e.srcElement.value === 'fromARNProps') {
 				form.table = createARNProps().table;
 			} else {
@@ -636,7 +639,7 @@ Draw.loadPlugin(function(ui)
 		}));
 		top.appendChild(form.table);
 
-		var newProp = document.createElement('div');
+		let newProp = document.createElement('div');
 		newProp.style.display = 'flex';
 		newProp.style.alignItems = 'center';
 		newProp.style.boxSizing = 'border-box';
@@ -645,7 +648,7 @@ Draw.loadPlugin(function(ui)
 		newProp.style.marginTop = '6px';
 		newProp.style.width = '100%';
 		
-		var nameInput = document.createElement('input');
+		let nameInput = document.createElement('input');
 		nameInput.setAttribute('placeholder', mxResources.get('enterPropertyName'));
 		nameInput.setAttribute('type', 'text');
 		nameInput.setAttribute('size', (mxClient.IS_IE || mxClient.IS_IE11) ? '36' : '40');
@@ -673,7 +676,7 @@ Draw.loadPlugin(function(ui)
 			}
 		};
 
-		var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+		let cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 		{
 			ui.hideDialog.apply(ui, arguments);
 		});
@@ -681,11 +684,11 @@ Draw.loadPlugin(function(ui)
 		cancelBtn.setAttribute('title', 'Escape');
 		cancelBtn.className = 'geBtn';
 
-		var exportBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function(evt)
+		let exportBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function(evt)
 		{
-			var result = graph.getDataForCells([cell]);
+			let result = graph.getDataForCells([cell]);
 
-			var dlg = new EmbedDialog(ui, JSON.stringify(result, null, 2), null, null, function()
+			let dlg = new EmbedDialog(ui, JSON.stringify(result, null, 2), null, null, function()
 			{
 				console.log(result);
 				ui.alert('Written to Console (Dev Tools)');
@@ -698,7 +701,7 @@ Draw.loadPlugin(function(ui)
 		exportBtn.className = 'geBtn';
 		
 		// Save
-		var applyBtn = mxUtils.button(mxResources.get('apply'), function()
+		let applyBtn = mxUtils.button(mxResources.get('apply'), function()
 		{
 			try
 			{
@@ -707,7 +710,7 @@ Draw.loadPlugin(function(ui)
 				// Clones and updates the value
 				let newProps = '';
 				let errors = [];
-				for (var i = 0; i < names.length; i++)
+				for (let i = 0; i < names.length; i++)
 				{
 					if (texts[i] == null || 
 						texts[i].value == null || 
@@ -753,14 +756,14 @@ Draw.loadPlugin(function(ui)
 			}
 		});
 		
-		var buttons = document.createElement('div');
+		let buttons = document.createElement('div');
 		buttons.style.cssText = 'position:absolute;left:30px;right:30px;text-align:right;bottom:30px;height:40px;'
 		
 		if (ui.editor.graph.getModel().isVertex(cell) || ui.editor.graph.getModel().isEdge(cell))
 		{
-			var replace = document.createElement('span');
+			let replace = document.createElement('span');
 			replace.style.marginRight = '10px';
-			var input = document.createElement('input');
+			let input = document.createElement('input');
 			input.setAttribute('type', 'checkbox');
 			input.style.marginRight = '6px';
 			
@@ -787,14 +790,14 @@ Draw.loadPlugin(function(ui)
 			
 			if (EditAWSDataDialog.placeholderHelpLink != null)
 			{
-				var link = document.createElement('a');
+				let link = document.createElement('a');
 				link.setAttribute('href', EditAWSDataDialog.placeholderHelpLink);
 				link.setAttribute('title', mxResources.get('help'));
 				link.setAttribute('target', '_blank');
 				link.style.marginLeft = '8px';
 				link.style.cursor = 'help';
 				
-				var icon = document.createElement('img');
+				let icon = document.createElement('img');
 				mxUtils.setOpacity(icon, 50);
 				icon.style.height = '16px';
 				icon.style.width = '16px';
@@ -832,7 +835,7 @@ Draw.loadPlugin(function(ui)
 	//
 	function exploreFromHere(selectionCell)
 	{
-		var dlg = new EditAWSDataDialog(ui, selectionCell);
+		let dlg = new EditAWSDataDialog(ui, selectionCell);
 		ui.showDialog(dlg.container, 480, 420, true, false, null, false);
 		dlg.init();
 	};
@@ -867,11 +870,11 @@ const dropDownMenu = (options, callback = undefined) => {
 		return null;
 	}
 
-	var editSelect = document.createElement('select');
+	let editSelect = document.createElement('select');
 	// Add selection options to the select box
-	for (var i = 0; i < options.length; i++)
+	for (let i = 0; i < options.length; i++)
 	{
-		var editOption = document.createElement('option');
+		let editOption = document.createElement('option');
 		editOption.setAttribute('value', options[i]);
 		editOption.setAttribute('title', options[i]);
 		mxUtils.write(editOption, options[i]);
@@ -897,28 +900,28 @@ const dropDownMenu = (options, callback = undefined) => {
 	 */
 	StyleFormatPanel.prototype.addEditOps = function(div)
 	{
-		var ss = this.editorUi.getSelectionState();
+		let ss = this.editorUi.getSelectionState();
 
 		if (ss.cells.length == 1)
 		{
-			var editSelect = document.createElement('select');
+			let editSelect = document.createElement('select');
 			editSelect.style.width = '210px';
 			editSelect.style.textAlign = 'center';
 			editSelect.style.marginBottom = '2px';
 			
-			var ops = ['edit', 'editLink', 'editShape', 'editImage', 'editData',
+			let ops = ['edit', 'editLink', 'editShape', 'editImage', 'editData',
 				'copyData', 'pasteData', 'editConnectionPoints', 'editGeometry',
 				'editTooltip', 'editStyle'];
 			
-			for (var i = 0; i < ops.length; i++)
+			for (let i = 0; i < ops.length; i++)
 			{
-				var action = this.editorUi.actions.get(ops[i]);
+				let action = this.editorUi.actions.get(ops[i]);
 
 				if (action == null || action.enabled)
 				{
-					var editOption = document.createElement('option');
+					let editOption = document.createElement('option');
 					editOption.setAttribute('value', ops[i]);
-					var title = mxResources.get(ops[i]);
+					let title = mxResources.get(ops[i]);
 					mxUtils.write(editOption, title + ((ops[i] == 'edit') ? '' : '...'));
 
 					if (action != null && action.shortcut != null)
@@ -937,7 +940,7 @@ const dropDownMenu = (options, callback = undefined) => {
 
 				mxEvent.addListener(editSelect, 'change', mxUtils.bind(this, function(evt)
 				{
-					var action = this.editorUi.actions.get(editSelect.value);
+					let action = this.editorUi.actions.get(editSelect.value);
 					editSelect.value = 'edit';
 
 					if (action != null)
@@ -948,12 +951,12 @@ const dropDownMenu = (options, callback = undefined) => {
 				
 				if (ss.image && ss.cells.length > 0)
 				{
-					var graph = this.editorUi.editor.graph;
-					var state = graph.view.getState(graph.getSelectionCell());
+					let graph = this.editorUi.editor.graph;
+					let state = graph.view.getState(graph.getSelectionCell());
 
 					if (state != null && mxUtils.getValue(state.style, mxConstants.STYLE_IMAGE, null) != null)
 					{
-						var btn = mxUtils.button(mxResources.get('crop') + '...',
+						let btn = mxUtils.button(mxResources.get('crop') + '...',
 							mxUtils.bind(this, function(evt)
 						{
 							this.editorUi.actions.get('crop').funct();
