@@ -593,6 +593,25 @@ Draw.loadPlugin(function(ui)
 		return form;
 	}
 
+	const addApplyButton = function(ui, parent, graph, callback) {
+		// Save
+		let applyBtn = mxUtils.button(mxResources.get('apply'), callback);
+
+		applyBtn.setAttribute('title', 'Ctrl+Enter');
+		applyBtn.className = 'geBtn gePrimaryBtn';
+
+		// Save on CTRL+Enter
+		// mxEvent.addListener(div, 'keypress', function(e)
+		// {
+		// 	if (e.keyCode == 13 && mxEvent.isControlDown(e))
+		// 	{
+		// 		applyBtn.click();
+		// 	}
+		// });
+
+		parent.appendChild(applyBtn);
+	}
+
 
 	/**
 	 * Constructs a new metadata dialog.
@@ -683,26 +702,12 @@ Draw.loadPlugin(function(ui)
 		
 		cancelBtn.setAttribute('title', 'Escape');
 		cancelBtn.className = 'geBtn';
-
-		let exportBtn = mxUtils.button(mxResources.get('export'), mxUtils.bind(this, function(evt)
-		{
-			let result = graph.getDataForCells([cell]);
-
-			let dlg = new EmbedDialog(ui, JSON.stringify(result, null, 2), null, null, function()
-			{
-				console.log(result);
-				ui.alert('Written to Console (Dev Tools)');
-			}, mxResources.get('export'), null, 'Console', 'data.json');
-			ui.showDialog(dlg.container, 450, 240, true, true);
-			dlg.init();
-		}));
 		
-		exportBtn.setAttribute('title', mxResources.get('export'));
-		exportBtn.className = 'geBtn';
 		
-		// Save
-		let applyBtn = mxUtils.button(mxResources.get('apply'), function()
-		{
+		let buttons = document.createElement('div');
+		buttons.style.cssText = 'position:absolute;left:30px;right:30px;text-align:right;bottom:30px;height:40px;'
+		buttons.appendChild(cancelBtn);
+		addApplyButton(ui, buttons, graph, function() {
 			try
 			{
 				ui.hideDialog.apply(ui, arguments);
@@ -744,87 +749,6 @@ Draw.loadPlugin(function(ui)
 				mxUtils.alert(e);
 			}
 		});
-
-		applyBtn.setAttribute('title', 'Ctrl+Enter');
-		applyBtn.className = 'geBtn gePrimaryBtn';
-
-		mxEvent.addListener(div, 'keypress', function(e)
-		{
-			if (e.keyCode == 13 && mxEvent.isControlDown(e))
-			{
-				applyBtn.click();
-			}
-		});
-		
-		let buttons = document.createElement('div');
-		buttons.style.cssText = 'position:absolute;left:30px;right:30px;text-align:right;bottom:30px;height:40px;'
-		
-		if (ui.editor.graph.getModel().isVertex(cell) || ui.editor.graph.getModel().isEdge(cell))
-		{
-			let replace = document.createElement('span');
-			replace.style.marginRight = '10px';
-			let input = document.createElement('input');
-			input.setAttribute('type', 'checkbox');
-			input.style.marginRight = '6px';
-			
-			if (value.getAttribute('placeholders') == '1')
-			{
-				input.setAttribute('checked', 'checked');
-				input.defaultChecked = true;
-			}
-		
-			mxEvent.addListener(input, 'click', function()
-			{
-				if (value.getAttribute('placeholders') == '1')
-				{
-					value.removeAttribute('placeholders');
-				}
-				else
-				{
-					value.setAttribute('placeholders', '1');
-				}
-			});
-			
-			replace.appendChild(input);
-			mxUtils.write(replace, mxResources.get('placeholders'));
-			
-			if (EditAWSDataDialog.placeholderHelpLink != null)
-			{
-				let link = document.createElement('a');
-				link.setAttribute('href', EditAWSDataDialog.placeholderHelpLink);
-				link.setAttribute('title', mxResources.get('help'));
-				link.setAttribute('target', '_blank');
-				link.style.marginLeft = '8px';
-				link.style.cursor = 'help';
-				
-				let icon = document.createElement('img');
-				mxUtils.setOpacity(icon, 50);
-				icon.style.height = '16px';
-				icon.style.width = '16px';
-				icon.setAttribute('border', '0');
-				icon.setAttribute('valign', 'middle');
-				icon.style.marginTop = (mxClient.IS_IE11) ? '0px' : '-4px';
-				icon.setAttribute('src', Editor.helpImage);
-				link.appendChild(icon);
-				
-				replace.appendChild(link);
-			}
-			
-			buttons.appendChild(replace);
-		}
-		
-		if (ui.editor.cancelFirst)
-		{
-			buttons.appendChild(cancelBtn);
-		}
-		
-		buttons.appendChild(exportBtn);
-		buttons.appendChild(applyBtn);
-
-		if (!ui.editor.cancelFirst)
-		{
-			buttons.appendChild(cancelBtn);
-		}
 
 		div.appendChild(buttons);
 		this.container = div;
