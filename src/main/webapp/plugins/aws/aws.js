@@ -29,6 +29,18 @@ Draw.loadPlugin(function(ui)
 		parent.appendChild(form.table);
 		return form;
 	}
+
+
+	// Custom AWS Resource
+	const createCustomResourceForm = (parent) => {
+		const form = new mxForm('Custom Resource');
+		form.table.style.width = '100%';
+
+		form.addText('Name', 'my-resource');
+		form.addTextarea('Custom Code', '', 10);
+	
+		parent.appendChild(form.table);
+	}
 		
 
 
@@ -61,6 +73,20 @@ Draw.loadPlugin(function(ui)
 		// });
 		return combo;
 	}
+
+
+
+	// General
+
+		// Simple, required information
+
+		// All configuration options (props)
+
+		// 
+
+	// Custom
+
+
 
 
 	// LAMBDA
@@ -213,7 +239,6 @@ Draw.loadPlugin(function(ui)
 		"Node.js 18": "cdk.aws_lambda.Runtime.NODEJS_18_X",
 	}
 
-
 	const LAMBDA_PROPERTIES = {
 		code: defineSchema(ENUM_FIELD_TYPES.RAW, 
 			`cdk.aws_lambda.Code.fromInline('exports.handler = async (event) => {\\n' +
@@ -361,6 +386,11 @@ Draw.loadPlugin(function(ui)
 
 	const RESOURCES = {
 		'mxgraph.aws4.key_management_service': {},
+
+		'mxgraph.aws4.general': {
+			name: 'Custom',
+			constructorProps: {},
+		},
 
 		'mxgraph.aws4.cognito': {},
 		'mxgraph.aws4.identity_and_access_management': {},
@@ -740,7 +770,9 @@ Draw.loadPlugin(function(ui)
 
 		const resourceType = getResourceInfo(cell)
 		if (resourceType && resourceType.name == 'Lambda') {
-			createBasicLambdaPropsForm(top)
+			createBasicLambdaPropsForm(top)	
+		} else if (resourceType && resourceType.name == 'Custom') {
+			createCustomResourceForm(top)
 		} else {
 			top.appendChild(form.table);
 		}
