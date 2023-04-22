@@ -4,14 +4,27 @@
 Draw.loadPlugin(function(ui)
 {
 	const createBasicLambdaPropsForm = (parent) => {
+		const runtimes = {
+			'cdk.aws_lambda.Runtime.NODEJS_14_X': 'Node.js 14',
+			'cdk.aws_lambda.Runtime.NODEJS_16_X': 'Node.js 16',
+			'cdk.aws_lambda.Runtime.NODEJS_18_X': 'Node.js 18',
+			'cdk.aws_lambda.Runtime.PYTHON_3_7': 'Python 3.7',
+			'cdk.aws_lambda.Runtime.PYTHON_3_8': 'Python 3.8',
+			'cdk.aws_lambda.Runtime.PYTHON_3_9': 'Python 3.9',
+		}
+
+
 		const form = new mxForm('Basic Properties');
 		form.table.style.width = '100%';
+
 		form.addText('Name', 'my-lambda');
-		form.addText('Description', 'My Lambda');
-		form.addText('Memory', '128');
-		form.addText('Timeout', '3');
-		form.addText('Reserved Concurrency', '1');
-		form.addText('Environment Variables', 'key1=value1,key2=value2');
+
+		// Add runtime combo
+		let runtimeCombo = form.addCombo('Runtime', false);
+		form.addOption(runtimeCombo, 'Select a runtime', 'invalid', true);
+		for (let key in runtimes) {
+			form.addOption(runtimeCombo, runtimes[key], key);
+		}
 
 		parent.appendChild(form.table);
 		return form;
@@ -724,8 +737,13 @@ Draw.loadPlugin(function(ui)
 
 			top.appendChild(form.table);
 		}));
-		//top.appendChild(form.table);
-		createBasicLambdaPropsForm(top)
+
+		const resourceType = getResourceInfo(cell)
+		if (resourceType && resourceType.name == 'Lambda') {
+			createBasicLambdaPropsForm(top)
+		} else {
+			top.appendChild(form.table);
+		}
 
 		let newProp = document.createElement('div');
 		newProp.style.display = 'flex';
