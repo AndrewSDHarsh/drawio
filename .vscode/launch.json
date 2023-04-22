@@ -10,8 +10,8 @@
             "name": "Attach to Remote",
             "address": "localhost",
             "port": 9229,
-            "localRoot": "${workspaceFolder}",
-            "remoteRoot": "/usr/src/drawio"
+            "localRoot": "${workspaceFolder}/src/main/webapp/plugins",
+            "remoteRoot": "/usr/local/tomcat/webapps/draw/plugins"
           }
           
     ]

@@ -3,7 +3,23 @@
  */
 Draw.loadPlugin(function(ui)
 {
-	
+	const createBasicLambdaPropsForm = (parent) => {
+		const form = new mxForm('Basic Properties');
+		form.table.style.width = '100%';
+		form.addText('Name', 'my-lambda');
+		form.addText('Description', 'My Lambda');
+		form.addText('Memory', '128');
+		form.addText('Timeout', '3');
+		form.addText('Reserved Concurrency', '1');
+		form.addText('Environment Variables', 'key1=value1,key2=value2');
+
+		parent.appendChild(form.table);
+		return form;
+	}
+		
+
+
+
 
 	const createResourceFinder = (form, resourceType) => {
 		let resources = [
@@ -612,6 +628,58 @@ Draw.loadPlugin(function(ui)
 		parent.appendChild(applyBtn);
 	}
 
+	const addOpenInVsCodeButton = function(parent, file) {
+		// create anchor element
+		let anchor = document.createElement('a');
+
+		// set attributes
+		anchor.setAttribute('href', `vscode://file/${file}`);
+		anchor.setAttribute('target', '_blank');
+		anchor.textContent = 'Link Text';
+
+		// add to DOM
+		//document.body.appendChild(anchor);
+		parent.appendChild(anchor);
+	}
+
+	const addOpenInVsCodeButton2 = function(parent, callback) {
+		// create button element
+		let button = document.createElement('button');
+		button.textContent = 'Open in VS Code';
+
+		// set onclick event
+		button.onclick = function() {
+			if (callback) {	
+				callback();
+			}
+		};
+
+		parent.appendChild(button);
+	}
+
+	const addOpenFileSelectionDialog = function(parent, callback) {
+		// create input element
+		let input = document.createElement('input');
+		input.type = 'file';
+		input.accept = '.js,.py'; // allow only .js and .py files
+
+		// add change event listener
+		input.addEventListener('change', function(event) {
+			let file = event.target.files[0];
+			console.log(file)
+			if (file) {
+				// handle selected file
+				console.log('Selected file:', file.name);
+			}
+
+			if (callback) {
+				callback(file);
+			}
+		});
+
+		parent.appendChild(input);
+	}
+
 
 	/**
 	 * Constructs a new metadata dialog.
@@ -656,7 +724,8 @@ Draw.loadPlugin(function(ui)
 
 			top.appendChild(form.table);
 		}));
-		top.appendChild(form.table);
+		//top.appendChild(form.table);
+		createBasicLambdaPropsForm(top)
 
 		let newProp = document.createElement('div');
 		newProp.style.display = 'flex';
@@ -667,16 +736,16 @@ Draw.loadPlugin(function(ui)
 		newProp.style.marginTop = '6px';
 		newProp.style.width = '100%';
 		
-		let nameInput = document.createElement('input');
-		nameInput.setAttribute('placeholder', mxResources.get('enterPropertyName'));
-		nameInput.setAttribute('type', 'text');
-		nameInput.setAttribute('size', (mxClient.IS_IE || mxClient.IS_IE11) ? '36' : '40');
-		nameInput.style.boxSizing = 'border-box';
-		nameInput.style.borderWidth = '1px';
-		nameInput.style.borderStyle = 'solid';
-		nameInput.style.marginLeft = '2px';
-		nameInput.style.padding = '4px';
-		nameInput.style.width = '100%';
+		// let nameInput = document.createElement('input');
+		// nameInput.setAttribute('placeholder', mxResources.get('enterPropertyName'));
+		// nameInput.setAttribute('type', 'text');
+		// nameInput.setAttribute('size', (mxClient.IS_IE || mxClient.IS_IE11) ? '36' : '40');
+		// nameInput.style.boxSizing = 'border-box';
+		// nameInput.style.borderWidth = '1px';
+		// nameInput.style.borderStyle = 'solid';
+		// nameInput.style.marginLeft = '2px';
+		// nameInput.style.padding = '4px';
+		// nameInput.style.width = '100%';
 		
 		//newProp.appendChild(nameInput);
 		top.appendChild(newProp);
@@ -691,9 +760,16 @@ Draw.loadPlugin(function(ui)
 			}
 			else
 			{
-				nameInput.focus();
+				//nameInput.focus();
 			}
 		};
+
+		
+
+
+		
+
+
 
 		let cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
 		{
@@ -706,6 +782,16 @@ Draw.loadPlugin(function(ui)
 		
 		let buttons = document.createElement('div');
 		buttons.style.cssText = 'position:absolute;left:30px;right:30px;text-align:right;bottom:30px;height:40px;'
+		
+		let file = 'C:\\Users\\scamp\\code\\drawio\\src\\main\\webapp\\plugins\\flow.js';
+		addOpenFileSelectionDialog(buttons, (infile) => {
+			file = infile
+		})
+		addOpenInVsCodeButton2(buttons, () => {
+			window.open(`vscode://file/${file}`);
+		})
+		//addOpenInVsCodeButton(buttons, 'C:\\Users\\scamp\\code\\drawio\\src\\main\\webapp\\plugins\\flow.js')
+
 		buttons.appendChild(cancelBtn);
 		addApplyButton(ui, buttons, graph, function() {
 			try
