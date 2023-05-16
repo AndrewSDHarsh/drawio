@@ -481,6 +481,28 @@ Draw.loadPlugin(function(ui)
 		return RESOURCES[styles['resIcon']];
 	}
 
+	let getLinkInfo = function(cell)
+	{
+		if (cell == null || cell.source == null || cell.target == null) {
+			return null;
+		}
+
+		let source = getResourceInfo(cell.source)
+		let target = getResourceInfo(cell.target)
+		if (source == null || target == null) {
+			return null;
+		}
+
+		if (source.name == "API Gateway" && target.name == "Lambda") {
+			return {
+				source: source,
+				target: target,
+			}
+		} else {
+			return null
+		}
+	}
+
 	// Adds resource for action
 	mxResources.parse('exploreFromHere=AWS Config');
 
@@ -492,9 +514,21 @@ Draw.loadPlugin(function(ui)
 		uiCreatePopupMenu.apply(this, arguments);
 		
 		let graph = ui.editor.graph;
-		if (!graph.model.isVertex(graph.getSelectionCell()) || getResourceInfo(cell) == null) {
+
+		console.log("createPopupMenu")
+		let cell = graph.getSelectionCell();
+		if (!graph.model.isVertex(cell)) {
+			if (cell.)
+			console.log(cell)
+			return
+		}
+
+		if (getResourceInfo(cell) == null) {
+			console.log("not a resource")
 			return;
 		}
+
+		//!graph.model.isVertex(graph.getSelectionCell()) || 
 
 		this.addMenuItems(menu, ['-', 'exploreFromHere'], null, evt);
 	};
